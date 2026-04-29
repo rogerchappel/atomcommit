@@ -1,0 +1,53 @@
+{
+  "version": "0.1",
+  "source": "taskbrief-orchestration",
+  "workspace": "default",
+  "repo": "atomcommit",
+  "generated_from": "taskbrief + llm-orchestration (openai:gpt-4.1-mini)",
+  "summary": {
+    "total_tasks": 1,
+    "dispatchable_now": [],
+    "blocked_tasks": [
+      "atomcommit-implement-cli-command-atomcommit-plan-to-analyze-git-working-tree-and-pr"
+    ],
+    "final_validation_task_ids": []
+  },
+  "waves": [
+    {
+      "wave": 1,
+      "name": "Implementation",
+      "mode": "sequential",
+      "dispatch": "after_human_decision",
+      "task_ids": [
+        "atomcommit-implement-cli-command-atomcommit-plan-to-analyze-git-working-tree-and-pr"
+      ]
+    }
+  ],
+  "tasks": [
+    {
+      "id": "atomcommit-implement-cli-command-atomcommit-plan-to-analyze-git-working-tree-and-pr",
+      "title": "Implement CLI command `atomcommit plan` to analyze git working tree and produce atomic commit plan",
+      "repo": "atomcommit",
+      "branch": "agent/implement-cli-command-atomcommit-plan-to-analyze-git-working-tree-and-pr",
+      "type": "feature",
+      "risk": "medium",
+      "phase": "implementation",
+      "depends_on": [],
+      "can_run_concurrently_with": [],
+      "dispatchable": false,
+      "blocked_by": [
+        "Approve grouping logic and risk flag criteria",
+        "Validate commit message suggestion quality"
+      ],
+      "verification": [
+        "Run fixture repos with mixed changes through CLI",
+        "Verify output matches snapshot tests for generated plans",
+        "Check output includes deterministic risk flags and suggested commit messages"
+      ]
+    }
+  ],
+  "dispatch_prompt": "No tasks are safe to dispatch yet. Resolve the blocked tasks or human decisions first, then dispatch the first unblocked wave.",
+  "refinement_notes": [
+    "The single task depends on human decisions to approve grouping logic and validate commit message quality, so it must be dispatched after those approvals, resulting in a single sequential wave. No other tasks exist to run concurrently or in sequence."
+  ]
+}
