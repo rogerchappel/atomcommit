@@ -9,20 +9,20 @@ security posture before using it in production.
 
 ## Install
 
-Replace this section with the generated repository's installation steps.
-
 ```sh
 pnpm install
 ```
 
 ## Use
 
-Replace this section with the smallest useful example for the generated
-repository.
+Run the default deterministic handoff command from a repo with local changes:
 
 ```sh
-pnpm dev
+atomcommit
 ```
+
+This is equivalent to `atomcommit plan` and prints a Markdown atomic commit plan.
+Use `atomcommit --json` only when another tool needs machine-readable output.
 
 ## Verify
 
