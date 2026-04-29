@@ -16,5 +16,8 @@
   },
   "keywords": [],
   "author": "StackForge User",
-  "license": "MIT"
+  "license": "MIT",
+  "bin": {
+    "atomcommit": "./src/index.js"
+  }
 }
