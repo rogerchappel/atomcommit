@@ -10,6 +10,14 @@ import { buildPlan, parseNameStatus, parseNumstat, renderMarkdown } from '../src
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
 const fixturesDir = join(__dirname, '..', 'fixtures');
+const setupMixedChangesFixture = join(fixturesDir, 'setup-mixed-changes.sh');
+
+function createMixedChangesFixture() {
+  const parent = mkdtempSync(join(tmpdir(), 'atomcommit-fixture-'));
+  const repo = join(parent, 'mixed-changes-repo');
+  execFileSync('bash', [setupMixedChangesFixture, repo], { encoding: 'utf8' });
+  return repo;
+}
 
 const nameStatusFixture = `M\tsrc/index.js\nA\ttest/plan.test.js\nR100\tdocs/old.md\tdocs/new.md\n`;
 const numstatFixture = `12\t3\tsrc/index.js\n45\t0\ttest/plan.test.js\n1\t1\tdocs/new.md\n`;
@@ -79,7 +87,7 @@ test('cli reads local git diff without mutating the working tree', () => {
 });
 
 test('fixture repo with mixed changes produces expected plan', () => {
-  const fixtureRepo = join(fixturesDir, 'mixed-changes-repo');
+  const fixtureRepo = createMixedChangesFixture();
   const cliPath = join(process.cwd(), 'src/index.js');
 
   // Verify fixture repo exists
@@ -119,7 +127,7 @@ test('fixture repo with mixed changes produces expected plan', () => {
 });
 
 test('suggests commit messages based on grouped files', () => {
-  const fixtureRepo = join(fixturesDir, 'mixed-changes-repo');
+  const fixtureRepo = createMixedChangesFixture();
   const cliPath = join(process.cwd(), 'src/index.js');
   const jsonOutput = JSON.parse(execFileSync(process.execPath, [cliPath, '--json'], { cwd: fixtureRepo, encoding: 'utf8' }));
 
@@ -133,7 +141,7 @@ test('suggests commit messages based on grouped files', () => {
 });
 
 test('snapshot: mixed changes produce consistent plan', () => {
-  const fixtureRepo = join(fixturesDir, 'mixed-changes-repo');
+  const fixtureRepo = createMixedChangesFixture();
   const cliPath = join(process.cwd(), 'src/index.js');
   const jsonOutput = execFileSync(process.execPath, [cliPath, '--json'], { cwd: fixtureRepo, encoding: 'utf8' });
 
