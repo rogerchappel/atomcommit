@@ -1,0 +1,17 @@
+# Generated fixture repos - run setup script to recreate
+fixtures/*-repo
+
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+build/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
