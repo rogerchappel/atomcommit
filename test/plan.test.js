@@ -1,12 +1,12 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, writeFileSync, readFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { test } from 'node:test';
 
-import { buildPlan, parseNameStatus, parseNumstat, renderMarkdown } from '../src/index.js';
+import { buildPlan, parseDiffStat, parseNameStatus, parseNumstat, renderMarkdown } from '../src/index.js';
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
 const fixturesDir = join(__dirname, '..', 'fixtures');
@@ -31,6 +31,7 @@ test('parses git name-status metadata including renames', () => {
       statusDetail: 'M',
       statusLabel: 'modified',
       score: null,
+      source: 'unstaged',
     },
     {
       path: 'test/plan.test.js',
@@ -39,6 +40,7 @@ test('parses git name-status metadata including renames', () => {
       statusDetail: 'A',
       statusLabel: 'added',
       score: null,
+      source: 'unstaged',
     },
     {
       path: 'docs/new.md',
@@ -47,14 +49,26 @@ test('parses git name-status metadata including renames', () => {
       statusDetail: 'R100',
       statusLabel: 'renamed',
       score: '100',
+      source: 'unstaged',
     },
   ]);
+});
+
+
+test('parses git stat summaries for plan metadata', () => {
+  const stat = parseDiffStat(` src/index.js | 2 +-
+ test/plan.test.js | 4 ++++
+ 2 files changed, 5 insertions(+), 1 deletion(-)
+`);
+
+  assert.equal(stat.summary, '2 files changed, 5 insertions(+), 1 deletion(-)');
+  assert.deepEqual(stat.files, ['src/index.js | 2 +-', 'test/plan.test.js | 4 ++++']);
 });
 
 test('builds deterministic grouped plan and markdown', () => {
   const plan = buildPlan(parseNameStatus(nameStatusFixture), parseNumstat(numstatFixture));
 
-  assert.deepEqual(plan.summary, { filesChanged: 3, suggestedCommits: 3 });
+  assert.deepEqual(plan.summary, { filesChanged: 3, suggestedCommits: 3, diffStat: '0 files changed' });
   assert.deepEqual(
     plan.commits.map((commit) => commit.title),
     ['Update documentation', 'Update source code', 'Update tests'],

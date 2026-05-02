@@ -63,7 +63,7 @@ export function parseNumstat(output) {
 
 export function parseDiffStat(output) {
   const lines = output.trim().split('\n').filter(Boolean);
-  const summary = lines.at(-1) ?? '0 files changed';
+  const summary = (lines.at(-1) ?? '0 files changed').trim();
   const fileLines = summary.includes('|') ? lines : lines.slice(0, -1);
 
   return {
