@@ -1,56 +1,55 @@
 # atomcommit
 
-Deterministic local CLI that analyzes a git working tree and produces an atomic commit plan in Markdown/JSON.
+`atomcommit` is a small, local-first CLI for turning a messy git diff into a reviewable atomic commit plan.
 
-## Status
+It does **not** stage, commit, rewrite, upload, or call an LLM. It just reads git's diff metadata and gives you a deterministic plan you can follow.
 
-This repository is early-stage. Confirm the current support, release, and
-security posture before using it in production.
+## Why it exists
 
-## Overview
+High-velocity coding sessions get awkward when one working tree contains source changes, docs, tests, CI tweaks, and a surprise deletion. `atomcommit plan` is the calm checkpoint: it separates concerns, points out risky files, and suggests commit messages before you touch `git add`.
 
-`atomcommit` inspects your local git diff (`git diff --name-status` and `git diff --numstat`) and produces a **deterministic atomic commit plan**. It groups related files into suggested commit slices and assigns risk flags so you can craft reviewable, focused commits.
+## Features
 
-Key features:
-- **No repo mutation** — reads git diff metadata only, never modifies your working tree
-- **Deterministic output** — same changes always produce the same plan
-- **Risk flagging** — highlights deletions, renames, binary files, and large changes
-- **Grouped commits** — files grouped by type: source code, tests, documentation, CI automation, and more
-- **Suggested commit messages** — each group gets a meaningful commit summary
+- **Deterministic planning** — same diff in, same Markdown/JSON plan out.
+- **Local-only by design** — shells out only to read-only `git diff` commands.
+- **Markdown and JSON output** — useful for humans, agents, and scripts.
+- **Staged + unstaged awareness** — labels whether each file is staged, unstaged, or both.
+- **Diff stat summary** — reads `git diff --stat` alongside name-status and numstat metadata.
+- **Risk flags** — calls out deletions, renames, binary files, large changes, lockfiles, merge conflicts, and sensitive-looking paths.
+- **Useful grouping** — separates source, tests, docs, CI/repo automation, package metadata, and fallback path groups.
 
 ## Install
 
+For local development:
+
 ```sh
-pnpm install
+npm install
+npm link
+```
+
+Or run directly from a checkout:
+
+```sh
+node /path/to/atomcommit/src/index.js plan
 ```
 
 ## Usage
 
-### Default plan command
-
-From a repo with local changes:
-
-```sh
-atomcommit
-```
-
-This is equivalent to:
+From any git repository with local changes:
 
 ```sh
 atomcommit plan
 ```
 
-Both commands print a Markdown-formatted atomic commit plan to stdout.
+`atomcommit` with no command is equivalent to `atomcommit plan`.
 
-### JSON output (for tooling)
-
-Use `--json` when another tool needs machine-readable output:
+Machine-readable output:
 
 ```sh
-atomcommit --json
+atomcommit plan --json
 ```
 
-### Help
+Help:
 
 ```sh
 atomcommit --help
@@ -58,15 +57,14 @@ atomcommit --help
 
 ## Example
 
-Given a working tree with changes across multiple file types:
-
 ```sh
-$ atomcommit
+$ atomcommit plan
 
 # Atomic Commit Plan
 
 - Files changed: 9
 - Suggested commits: 4
+- Diff stat: 9 files changed, 22 insertions(+), 8 deletions(-)
 
 ## 1. Update ci and repository automation
 
@@ -75,112 +73,76 @@ Suggested commit message: `Update ci and repository automation`
 Groups 1 file under ci and repository automation.
 
 Files:
-- modified: .github/workflows/ci.yml (+3/-1)
-
-## 2. Update documentation
-
-Suggested commit message: `Update documentation`
-
-Groups 3 files under documentation.
-
-Files:
-- renamed: CONTRIBUTING.md (from README.md) (+0/-0)
-- added: docs/api.md (+5/-0)
-- modified: docs/intro.md (+2/-2)
-
-Risk flags: rename
-
-## 3. Update source code
-
-Suggested commit message: `Update source code`
-
-Groups 3 files under source code.
-
-Files:
-- modified: src/app.js (+2/-1)
-- deleted: src/asset.bin (+0/-2)
-- modified: src/utils.js (+5/-2)
-
-Risk flags: deletion
-
-## 4. Update tests
-
-Suggested commit message: `Update tests`
-
-Groups 2 files under tests.
-
-Files:
-- modified: test/app.test.js (+1/-0)
-- added: test/utils.test.js (+4/-0)
+- modified: .github/workflows/ci.yml (+3/-1, staged)
 ```
 
-### Grouping Logic
+Full generated examples are checked in:
 
-Files are grouped by path and extension:
+- [`examples/mixed-plan.md`](examples/mixed-plan.md)
+- [`examples/mixed-plan.json`](examples/mixed-plan.json)
 
-| Group | Matching Pattern |
-|---|---|
-| CI and repository automation | `.github/*`, CI workflows |
-| Documentation | `docs/*`, `*.md` files |
-| Tests | `test/*`, `*.test.js`, `*.test.*` |
-| Source code | `src/*`, `*.js` source files |
-| Root files | top-level files not matching other patterns |
+## Grouping logic
 
-### Risk Flags
+`atomcommit` uses deterministic path rules, not heuristics that change run to run:
 
-The plan flags certain changes for extra review attention:
+- CI/repo automation: `.github/`, workflow paths.
+- Package/dependency metadata: package manifests, lockfiles, common dependency files.
+- Documentation: `docs/`, Markdown, and top-level project docs.
+- Tests: `test/`, `tests/`, `__tests__/`, `spec/`, `*.test.*`, `*.spec.*`.
+- Source code: `src/`, `lib/`, `bin/`, common JS/TS source extensions.
+- Fallback: first path segment or root files.
 
-| Flag | Trigger |
-|---|---|
-| `deletion` | File deleted from working tree |
-| `rename` | File renamed/moved |
-| `binary-file` | Binary file change (no text stats) |
-| `large-change` | Combined additions + deletions ≥ 400 lines |
+## Risk flags
 
-## Verify
+- `deletion` — deleted file.
+- `rename` — renamed or moved file.
+- `binary-file` — git numstat cannot provide text stats.
+- `large-change` — additions + deletions are at least 400 lines.
+- `dependency-lockfile` — lockfile or dependency lock metadata changed.
+- `merge-conflict` — git reports an unmerged path.
+- `sensitive-path` — path name looks like secrets, credentials, private keys, or `.env` material.
 
-Run the local validation script before opening a pull request:
+## Safety and privacy
 
-```sh
-bash scripts/validate.sh
-```
+`atomcommit plan` is intentionally boring in the best way:
 
-This runs the package test suite and checks for required files. The script will also run `agent-qc ready` when `agent-qc` is installed. Missing `agent-qc` is treated as a skip, not a failure.
+- It never runs `git add`, `git commit`, `git reset`, `git checkout`, or write commands.
+- It does not inspect full file contents for planning; V1 uses git metadata (`name-status`, `numstat`, `stat`).
+- It makes no network requests.
+- It has no LLM dependency and sends nothing to a remote service.
 
-Run tests directly:
+Still, JSON/Markdown output includes file paths, so treat shared plans like review artifacts.
+
+## Verification
 
 ```sh
 npm test
+npm run check
+npm run build
+npm run smoke
+npm run validate
 ```
 
-## Fixture Repositories
+The smoke test creates a fixture git repo, generates Markdown and JSON plans, and verifies expected commit groups and risk flags.
 
-The `fixtures/` directory contains deterministic test repos. To recreate:
+## Fixture repositories
+
+Create the mixed-changes fixture manually:
 
 ```sh
-bash fixtures/setup-mixed-changes.sh
+bash fixtures/setup-mixed-changes.sh /tmp/atomcommit-fixture
+cd /tmp/atomcommit-fixture
+atomcommit plan
+atomcommit plan --json
 ```
-
-Then test against the fixture:
-
-```sh
-cd fixtures/mixed-changes-repo
-atomcommit
-```
-
-See [fixtures/README.md](fixtures/README.md) for details.
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution expectations. Changes
-should be small, reviewable, and verified before review.
+See [CONTRIBUTING.md](CONTRIBUTING.md). Keep changes small, reviewable, and covered by the smallest useful verification gate.
 
 ## Security
 
-See [SECURITY.md](SECURITY.md) for vulnerability reporting guidance. Replace
-the default security policy before publishing the generated repository.
-
-These links assume this README has been copied to the generated repository root.
+See [SECURITY.md](SECURITY.md). Please avoid posting sensitive details in public issues.
 
 ## License
 
