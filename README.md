@@ -14,6 +14,12 @@ cd atomcommit
 npm install
 ```
 
+After publication, install the CLI with npm:
+
+```sh
+npm install -g atomcommit
+```
+
 ## Use
 
 Start by reading the product notes and running the local checks:
@@ -23,16 +29,22 @@ sed -n '1,120p' docs/PRD.md
 npm test
 ```
 
-If you are evaluating the package contents before a release, run:
+Generate an atomic commit plan from a repository with local changes:
 
 ```sh
-npm test
+atomcommit plan
+atomcommit plan --json
+atomcommit --version
 ```
 
 ## Verification
 
 ```sh
 npm test
+npm run check
+npm run smoke
+npm run package:smoke
+npm run release:check
 ```
 
 ## Limitations

@@ -100,6 +100,13 @@ test('cli reads local git diff without mutating the working tree', () => {
   assert.equal(JSON.parse(output).commits[0].message, 'Update source code');
 });
 
+test('cli prints version without requiring a git repo', () => {
+  const cliPath = join(process.cwd(), 'src/index.js');
+  const output = execFileSync(process.execPath, [cliPath, '--version'], { cwd: tmpdir(), encoding: 'utf8' });
+
+  assert.equal(output.trim(), '0.1.0');
+});
+
 test('fixture repo with mixed changes produces expected plan', () => {
   const fixtureRepo = createMixedChangesFixture();
   const cliPath = join(process.cwd(), 'src/index.js');

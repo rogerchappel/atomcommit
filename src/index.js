@@ -22,6 +22,8 @@ const GROUP_RULES = [
   ['source code', (path) => path.startsWith('src/') || path.startsWith('lib/') || path.startsWith('bin/') || /\.[cm]?[jt]sx?$/.test(path)],
 ];
 
+const VERSION = '0.1.0';
+
 export function parseNameStatus(output, source = 'unstaged') {
   return output
     .trim()
@@ -267,12 +269,17 @@ function runGit(args, cwd) {
 }
 
 function printHelp() {
-  console.log(`Usage: atomcommit [plan] [--json]\n\nCommands:\n  plan       Analyze the local git diff and print an atomic commit plan.\n\nDefault:\n  atomcommit is equivalent to atomcommit plan.\n\nOptions:\n  --json     Print machine-readable JSON instead of Markdown.\n  -h, --help Show this help.\n\nSafety:\n  atomcommit only runs read-only git diff commands and never stages, commits, or modifies files.`);
+  console.log(`Usage: atomcommit [plan] [--json]\n\nCommands:\n  plan       Analyze the local git diff and print an atomic commit plan.\n\nDefault:\n  atomcommit is equivalent to atomcommit plan.\n\nOptions:\n  --json        Print machine-readable JSON instead of Markdown.\n  -h, --help    Show this help.\n  -v, --version Print the CLI version.\n\nSafety:\n  atomcommit only runs read-only git diff commands and never stages, commits, or modifies files.`);
 }
 
 export function main(argv = process.argv.slice(2), cwd = process.cwd()) {
   if (argv.includes('--help') || argv.includes('-h')) {
     printHelp();
+    return 0;
+  }
+
+  if (argv.includes('--version') || argv.includes('-v') || argv[0] === 'version') {
+    console.log(VERSION);
     return 0;
   }
 

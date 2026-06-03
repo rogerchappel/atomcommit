@@ -11,13 +11,17 @@
     "src",
     "fixtures",
     "README.md",
-    "LICENSE"
+    "LICENSE",
+    "SECURITY.md",
+    "CONTRIBUTING.md"
   ],
   "scripts": {
     "test": "node --test test/*.test.js",
     "check": "node --check src/index.js && node --test test/*.test.js",
     "build": "node --check src/index.js",
     "smoke": "bash scripts/smoke.sh",
+    "package:smoke": "npm pack --dry-run",
+    "release:check": "npm run check && npm run smoke && npm run package:smoke",
     "validate": "bash scripts/validate.sh"
   },
   "keywords": [
