@@ -13,6 +13,7 @@ const STATUS_LABELS = {
   X: 'unknown',
   B: 'broken pair',
 };
+const VERSION = '0.1.0';
 
 export function parseNameStatus(output) {
   return output
@@ -188,6 +189,10 @@ function printHelp() {
 export function main(argv = process.argv.slice(2), cwd = process.cwd()) {
   if (argv.includes('--help') || argv.includes('-h')) {
     printHelp();
+    return 0;
+  }
+  if (argv.includes('--version') || argv.includes('-v')) {
+    console.log(VERSION);
     return 0;
   }
 

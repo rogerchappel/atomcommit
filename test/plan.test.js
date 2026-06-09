@@ -73,3 +73,10 @@ test('cli reads local git diff without mutating the working tree', () => {
   assert.match(markdown, /^# Atomic Commit Plan/);
   assert.equal(JSON.parse(output).commits[0].message, 'Update source code');
 });
+
+test('cli reports package version', () => {
+  const cliPath = join(process.cwd(), 'src/index.js');
+  const output = execFileSync(process.execPath, [cliPath, '--version'], { encoding: 'utf8' });
+
+  assert.equal(output.trim(), '0.1.0');
+});
