@@ -12,11 +12,21 @@
     "README.md"
   ],
   "scripts": {
-    "test": "node --test"
+    "test": "node --test",
+    "package:smoke": "npm pack --dry-run",
+    "release:check": "npm test && npm run package:smoke"
   },
   "keywords": [],
   "author": "StackForge User",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/rogerchappel/atomcommit"
+  },
+  "bugs": {
+    "url": "https://github.com/rogerchappel/atomcommit/issues"
+  },
+  "homepage": "https://github.com/rogerchappel/atomcommit#readme",
   "bin": {
     "atomcommit": "./src/index.js"
   }
