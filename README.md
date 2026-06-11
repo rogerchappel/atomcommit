@@ -65,3 +65,9 @@ See [SECURITY.md](SECURITY.md). Do not include secrets, private tokens, propriet
 ## License
 
 MIT
+
+## Verification
+
+Run the release-readiness checks that match this package before publishing or opening a release PR.
+
+- `npm run build` - compile the package artifacts
