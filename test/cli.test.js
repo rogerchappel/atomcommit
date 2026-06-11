@@ -7,8 +7,8 @@ import { join } from 'node:path';
 
 test('atomcommit plan test - CLI should handle --help', () => {
   try {
-    const out = execSync('node src/index.js --help', { encoding: 'utf8', stdio: 'pipe' });
-    assert.ok(out.includes('atomcommit') || out.includes('plan') || out.includes('commit'), 
+    const out = execFileSync(process.execPath, ['src/index.js', '--help'], { encoding: 'utf8', stdio: 'pipe' });
+    assert.ok(out.includes('atomcommit') || out.includes('plan') || out.includes('commit'),
       'help should mention atomcommit or plan');
   } catch (e) {
     // CLI may exit with code for --help
