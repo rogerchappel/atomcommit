@@ -14,7 +14,8 @@
     "LICENSE",
     "SECURITY.md",
     "CONTRIBUTING.md",
-    "CHANGELOG.md"
+    "CHANGELOG.md",
+    "CODE_OF_CONDUCT.md"
   ],
   "scripts": {
     "test": "node --test test/*.test.js",
