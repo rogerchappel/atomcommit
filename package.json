@@ -17,6 +17,10 @@
     "CHANGELOG.md",
     "CODE_OF_CONDUCT.md"
   ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rogerchappel/atomcommit.git"
+  },
   "scripts": {
     "test": "node --test test/*.test.js",
     "check": "node --check src/index.js && node --test test/*.test.js",
