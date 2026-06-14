@@ -40,10 +40,6 @@
   ],
   "author": "Roger Chappel",
   "license": "MIT",
-  "repository": {
-    "type": "git",
-    "url": "git+ssh://git@github.com/rogerchappel/atomcommit.git"
-  },
   "bugs": {
     "url": "https://github.com/rogerchappel/atomcommit/issues"
   },
