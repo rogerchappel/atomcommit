@@ -77,6 +77,7 @@ jobs:
               npm run check --if-present
               npm test --if-present
               npm run build --if-present
+          npm run package:smoke --if-present
               npm run smoke --if-present
               npm run package:smoke --if-present
             fi
@@ -88,6 +89,7 @@ jobs:
               npm run check --if-present
               npm test --if-present
               npm run build --if-present
+          npm run package:smoke --if-present
               npm run smoke --if-present
               npm run package:smoke --if-present
             fi
