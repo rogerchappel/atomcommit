@@ -1,0 +1,197 @@
+{
+  "summary": {
+    "filesChanged": 9,
+    "suggestedCommits": 4,
+    "diffStat": "9 files changed, 22 insertions(+), 8 deletions(-)"
+  },
+  "commits": [
+    {
+      "order": 1,
+      "title": "Update ci and repository automation",
+      "message": "Update ci and repository automation",
+      "rationale": "Groups 1 file under ci and repository automation.",
+      "files": [
+        {
+          "path": ".github/workflows/ci.yml",
+          "previousPath": null,
+          "status": "M",
+          "statusDetail": "M",
+          "statusLabel": "modified",
+          "score": null,
+          "source": "staged",
+          "stats": {
+            "added": 3,
+            "deleted": 1,
+            "binary": false
+          },
+          "group": "ci and repository automation",
+          "riskFlags": []
+        }
+      ],
+      "riskFlags": []
+    },
+    {
+      "order": 2,
+      "title": "Update documentation",
+      "message": "Update documentation",
+      "rationale": "Groups 3 files under documentation.",
+      "files": [
+        {
+          "path": "CONTRIBUTING.md",
+          "previousPath": "README.md",
+          "status": "R",
+          "statusDetail": "R100",
+          "statusLabel": "renamed",
+          "score": "100",
+          "source": "staged",
+          "stats": {
+            "added": 0,
+            "deleted": 0,
+            "binary": false
+          },
+          "group": "documentation",
+          "riskFlags": [
+            "rename"
+          ]
+        },
+        {
+          "path": "docs/api.md",
+          "previousPath": null,
+          "status": "A",
+          "statusDetail": "A",
+          "statusLabel": "added",
+          "score": null,
+          "source": "staged",
+          "stats": {
+            "added": 5,
+            "deleted": 0,
+            "binary": false
+          },
+          "group": "documentation",
+          "riskFlags": []
+        },
+        {
+          "path": "docs/intro.md",
+          "previousPath": null,
+          "status": "M",
+          "statusDetail": "M",
+          "statusLabel": "modified",
+          "score": null,
+          "source": "staged",
+          "stats": {
+            "added": 2,
+            "deleted": 2,
+            "binary": false
+          },
+          "group": "documentation",
+          "riskFlags": []
+        }
+      ],
+      "riskFlags": [
+        "rename"
+      ]
+    },
+    {
+      "order": 3,
+      "title": "Update source code",
+      "message": "Update source code",
+      "rationale": "Groups 3 files under source code.",
+      "files": [
+        {
+          "path": "src/app.js",
+          "previousPath": null,
+          "status": "M",
+          "statusDetail": "M",
+          "statusLabel": "modified",
+          "score": null,
+          "source": "staged",
+          "stats": {
+            "added": 2,
+            "deleted": 1,
+            "binary": false
+          },
+          "group": "source code",
+          "riskFlags": []
+        },
+        {
+          "path": "src/asset.bin",
+          "previousPath": null,
+          "status": "D",
+          "statusDetail": "D",
+          "statusLabel": "deleted",
+          "score": null,
+          "source": "staged",
+          "stats": {
+            "added": 0,
+            "deleted": 2,
+            "binary": false
+          },
+          "group": "source code",
+          "riskFlags": [
+            "deletion"
+          ]
+        },
+        {
+          "path": "src/utils.js",
+          "previousPath": null,
+          "status": "M",
+          "statusDetail": "M",
+          "statusLabel": "modified",
+          "score": null,
+          "source": "staged",
+          "stats": {
+            "added": 5,
+            "deleted": 2,
+            "binary": false
+          },
+          "group": "source code",
+          "riskFlags": []
+        }
+      ],
+      "riskFlags": [
+        "deletion"
+      ]
+    },
+    {
+      "order": 4,
+      "title": "Update tests",
+      "message": "Update tests",
+      "rationale": "Groups 2 files under tests.",
+      "files": [
+        {
+          "path": "test/app.test.cjs",
+          "previousPath": null,
+          "status": "M",
+          "statusDetail": "M",
+          "statusLabel": "modified",
+          "score": null,
+          "source": "staged",
+          "stats": {
+            "added": 1,
+            "deleted": 0,
+            "binary": false
+          },
+          "group": "tests",
+          "riskFlags": []
+        },
+        {
+          "path": "test/utils.test.cjs",
+          "previousPath": null,
+          "status": "A",
+          "statusDetail": "A",
+          "statusLabel": "added",
+          "score": null,
+          "source": "staged",
+          "stats": {
+            "added": 4,
+            "deleted": 0,
+            "binary": false
+          },
+          "group": "tests",
+          "riskFlags": []
+        }
+      ],
+      "riskFlags": []
+    }
+  ]
+}

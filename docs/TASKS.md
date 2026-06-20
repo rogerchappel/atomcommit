@@ -1,74 +1,52 @@
-# Task Brief: Implement CLI command `atomcommit plan` to analyze git working tree and produce atomic commit plan
+# atomcommit MVP Tasks
 
 ## Objective
 
-Create a CLI tool that reads git diffs and outputs atomic commit plans
+Build a deterministic local CLI, `atomcommit plan`, that reads a repository's git diff metadata and produces an atomic commit plan in Markdown or JSON without mutating the repository.
 
 ## Repository
 
-atomcommit
+- Repo: `atomcommit`
+- Remote: `git@github.com:rogerchappel/atomcommit.git`
+- Primary command: `atomcommit plan`
+- Default command: `atomcommit` behaves like `atomcommit plan`
 
-## Suggested Branch
+## Completed MVP Scope
 
-agent/implement-cli-command-atomcommit-plan-to-analyze-git-working-tree-and-pr
+- [x] CLI entrypoint with `atomcommit plan`, default command, `--json`, and `--help`.
+- [x] Read-only git integration using:
+  - `git diff --name-status`
+  - `git diff --cached --name-status`
+  - `git diff --numstat`
+  - `git diff --cached --numstat`
+  - `git diff --stat`
+  - `git diff --cached --stat`
+- [x] Deterministic grouping by CI/repo automation, package metadata, docs, tests, source, and fallback path groups.
+- [x] Markdown renderer with summary, suggested commit messages, grouped files, source labels, line stats, and risk flags.
+- [x] JSON renderer for machine-readable plans.
+- [x] Staged/unstaged awareness with `staged`, `unstaged`, and `staged+unstaged` labels.
+- [x] Risk flags for deletion, rename, merge conflict, binary file, large change, lockfile, and sensitive-looking paths.
+- [x] Fixture generator for a mixed-change git repository.
+- [x] Tests for parsers, deterministic grouping, CLI no-mutation behavior, fixture smoke behavior, commit messages, and snapshots.
+- [x] README, examples, CONTRIBUTING, SECURITY, package metadata, validation script, and smoke script.
 
-## Task Type
+## Verification Commands
 
-feature
+- `npm test`
+- `npm run check`
+- `npm run build`
+- `npm run smoke`
+- `npm run validate`
 
-## Risk Level
+## Human Review Points
 
-Medium
+- Grouping logic is deterministic and intentionally simple for V1.
+- Commit messages are conservative (`Add`, `Remove`, `Rename`, `Update`) and scoped by group.
+- The CLI is local-first and does not stage, commit, reset, checkout, rewrite, upload, or call external services.
 
-## Context
+## Follow-up Ideas
 
-Source: llm (openai:gpt-4.1-mini)
-
-The CLI should read `git diff --name-status`, `git diff --stat`, and optionally `git diff --numstat` to group files into commit slices by path and type, outputting Markdown and JSON with risk flags and suggested commit messages.
-
-## Allowed Paths
-
-- cli/
-- lib/
-- tests/
-- docs/
-
-## Forbidden Paths
-
-- auto_commit/
-- auto_stage/
-- llm_integration/
-
-## Expected Commits
-
-- Add CLI command `atomcommit plan`
-- Implement git diff parsing for name-status, stat, and numstat
-- Add logic to group files into commit slices by path and type
-- Generate Markdown and JSON output formats
-- Add deterministic risk flagging logic
-- Suggest commit messages based on grouped files
-
-## Verification
-
-- Run fixture repos with mixed changes through CLI
-- Verify output matches snapshot tests for generated plans
-- Check output includes deterministic risk flags and suggested commit messages
-
-## Stop Conditions
-
-- CLI produces correct atomic commit plans in Markdown and JSON
-- All snapshot tests pass
-- No mutations to the git repo occur during CLI execution
-
-## Review Pack Required
-
-Yes.
-
-## Human Decision Needed
-
-- Approve grouping logic and risk flag criteria
-- Validate commit message suggestion quality
-
-## Agent Prompt
-
-Build `atomcommit`, a deterministic local CLI that analyzes a git working tree and produces an atomic commit plan in Markdown/JSON. It must not mutate the repo. Include fixtures, risk flags, tests, README, and examples.
+- Add optional path filters, e.g. `atomcommit plan -- path/to/file`.
+- Add configurable grouping rules.
+- Add richer handling for rename numstat path formats.
+- Add shell completions after the CLI surface stabilizes.

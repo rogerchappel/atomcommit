@@ -2,39 +2,38 @@
 
 ## Summary
 
-- Workspace: default
-- Repository: atomcommit
-- Source: taskbrief + llm-orchestration (openai:gpt-4.1-mini)
-- Total tasks: 1
-- Dispatch now: None
-- Blocked tasks: atomcommit-implement-cli-command-atomcommit-plan-to-analyze-git-working-tree-and-pr
+- Workspace: OSS factory
+- Repository: `atomcommit`
+- Task: `atomcommit-implement-cli-command-atomcommit-plan-to-analyze-git-working-tree-and-pr`
+- Status: completed locally; ready to push to `main`
+- Implementation mode: isolated git worktree
 
-## Dispatch Prompt
+## Worktree
 
-No tasks are safe to dispatch yet. Resolve the blocked tasks or human decisions first, then dispatch the first unblocked wave.
+- Main checkout: `/Users/roger/Developer/my-opensource/atomcommit`
+- Isolated worktree: `/Users/roger/Developer/my-opensource/.worktrees/atomcommit-factory-20260503-0630`
+- Base: `origin/main` at merge commit `9a40770`
 
-## LLM Refinement Notes
+## Delivered MVP
 
-- The single task depends on human decisions to approve grouping logic and validate commit message quality, so it must be dispatched after those approvals, resulting in a single sequential wave. No other tasks exist to run concurrently or in sequence.
+`atomcommit plan` now produces deterministic atomic commit plans from staged and unstaged git diff metadata. It emits Markdown by default and JSON with `--json`, groups files into sensible commit slices, includes suggested commit messages, marks source state, summarizes diff stats, and flags risks.
 
-## Sequential Waves
+## Safety Notes
 
-### Wave 1: Implementation
+The CLI only executes read-only `git diff` commands. It does not mutate the repository, create commits, stage files, reset files, or make network requests.
 
-- Mode inside wave: sequential
-- Dispatch: after_human_decision
-- Tasks: atomcommit-implement-cli-command-atomcommit-plan-to-analyze-git-working-tree-and-pr
+## Validation
 
-## Task Dependencies
+Required gates to run before release:
 
-### atomcommit-implement-cli-command-atomcommit-plan-to-analyze-git-working-tree-and-pr: Implement CLI command `atomcommit plan` to analyze git working tree and produce atomic commit plan
+- `npm test`
+- `npm run check`
+- `npm run build`
+- `npm run smoke`
+- `npm run validate`
 
-- Phase: implementation
-- Repo: atomcommit
-- Branch: agent/implement-cli-command-atomcommit-plan-to-analyze-git-working-tree-and-pr
-- Risk: medium
-- Depends on: None
-- Can run concurrently with: None
-- Dispatchable now: No
-- Blocked by: Approve grouping logic and risk flag criteria; Validate commit message suggestion quality
+## Remaining Release Steps
 
+- Push worktree HEAD to `rogerchappel/atomcommit` `main`.
+- Set/update GitHub description and topics.
+- Run `/Users/roger/.openclaw/workspace/scripts/protect-github-main.sh rogerchappel atomcommit main best-effort`.

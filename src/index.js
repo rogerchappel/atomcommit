@@ -2,8 +2,6 @@
 import { spawnSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
 
-const VERSION = '0.1.0';
-
 const STATUS_LABELS = {
   A: 'added',
   C: 'copied',
@@ -16,7 +14,17 @@ const STATUS_LABELS = {
   B: 'broken pair',
 };
 
-export function parseNameStatus(output) {
+const GROUP_RULES = [
+  ['ci and repository automation', (path) => path.startsWith('.github/') || path.includes('/workflows/')],
+  ['package and dependency metadata', (path) => /(^|\/)(package(-lock)?\.json|pnpm-lock\.yaml|yarn\.lock|bun\.lockb|Cargo\.lock|go\.sum|requirements.*\.txt|poetry\.lock)$/.test(path)],
+  ['documentation', (path) => path.startsWith('docs/') || /(^|\/)(README|CHANGELOG|CONTRIBUTING|SECURITY|CODE_OF_CONDUCT|ROADMAP|LICENSE)(\.[^.]+)?$/i.test(path) || path.endsWith('.md')],
+  ['tests', (path) => path.startsWith('test/') || path.startsWith('tests/') || /(^|\/)(__tests__|spec)\//.test(path) || /\.(test|spec)\.[cm]?[jt]sx?$/.test(path)],
+  ['source code', (path) => path.startsWith('src/') || path.startsWith('lib/') || path.startsWith('bin/') || /\.[cm]?[jt]sx?$/.test(path)],
+];
+
+const VERSION = '0.1.0';
+
+export function parseNameStatus(output, source = 'unstaged') {
   return output
     .trim()
     .split('\n')
@@ -36,6 +44,7 @@ export function parseNameStatus(output) {
         statusDetail: rawStatus,
         statusLabel: STATUS_LABELS[status] ?? 'changed',
         score,
+        source,
       };
     });
 }
@@ -54,14 +63,29 @@ export function parseNumstat(output) {
   return byPath;
 }
 
-export function buildPlan(changes, numstat = new Map()) {
+export function parseDiffStat(output) {
+  const lines = output.trim().split('\n').filter(Boolean);
+  const summary = (lines.at(-1) ?? '0 files changed').trim();
+  const fileLines = summary.includes('|') ? lines : lines.slice(0, -1);
+
+  return {
+    raw: output.trim(),
+    summary,
+    files: fileLines.map((line) => line.trim()),
+  };
+}
+
+export function buildPlan(changes, numstat = new Map(), diffStat = { raw: '', summary: '0 files changed', files: [] }) {
   const enriched = changes
-    .map((change) => ({
-      ...change,
-      stats: numstat.get(change.path) ?? { added: 0, deleted: 0, binary: false },
-      group: groupForPath(change.path),
-      riskFlags: riskFlags(change, numstat.get(change.path)),
-    }))
+    .map((change) => {
+      const stats = numstat.get(change.path) ?? { added: 0, deleted: 0, binary: false };
+      return {
+        ...change,
+        stats,
+        group: groupForPath(change.path),
+        riskFlags: riskFlags(change, stats),
+      };
+    })
     .sort((a, b) => a.path.localeCompare(b.path));
 
   const groups = new Map();
@@ -72,21 +96,24 @@ export function buildPlan(changes, numstat = new Map()) {
     groups.get(change.group).push(change);
   }
 
+  const commits = [...groups.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([group, files], index) => ({
+      order: index + 1,
+      title: `Update ${group}`,
+      message: commitMessageFor(group, files),
+      rationale: `Groups ${files.length} ${files.length === 1 ? 'file' : 'files'} under ${group}.`,
+      files,
+      riskFlags: [...new Set(files.flatMap((file) => file.riskFlags))].sort(),
+    }));
+
   return {
     summary: {
       filesChanged: enriched.length,
-      suggestedCommits: groups.size,
+      suggestedCommits: commits.length,
+      diffStat: diffStat.summary,
     },
-    commits: [...groups.entries()]
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([group, files], index) => ({
-        order: index + 1,
-        title: `Update ${group}`,
-        message: `Update ${group}`,
-        rationale: `Groups ${files.length} ${files.length === 1 ? 'file' : 'files'} under ${group}.`,
-        files,
-        riskFlags: [...new Set(files.flatMap((file) => file.riskFlags))].sort(),
-      })),
+    commits,
   };
 }
 
@@ -96,8 +123,13 @@ export function renderMarkdown(plan) {
     '',
     `- Files changed: ${plan.summary.filesChanged}`,
     `- Suggested commits: ${plan.summary.suggestedCommits}`,
-    '',
   ];
+
+  if (plan.summary.diffStat) {
+    lines.push(`- Diff stat: ${plan.summary.diffStat}`);
+  }
+
+  lines.push('');
 
   if (plan.commits.length === 0) {
     lines.push('No local diff detected.');
@@ -110,7 +142,8 @@ export function renderMarkdown(plan) {
     for (const file of commit.files) {
       const stats = file.stats.binary ? 'binary' : `+${file.stats.added}/-${file.stats.deleted}`;
       const previous = file.previousPath ? ` (from ${file.previousPath})` : '';
-      lines.push(`- ${file.statusLabel}: ${file.path}${previous} (${stats})`);
+      const source = file.source === 'staged+unstaged' ? ', staged + unstaged' : `, ${file.source}`;
+      lines.push(`- ${file.statusLabel}: ${file.path}${previous} (${stats}${source})`);
     }
 
     if (commit.riskFlags.length > 0) {
@@ -124,21 +157,35 @@ export function renderMarkdown(plan) {
 }
 
 export function collectGitDiff(cwd = process.cwd()) {
-  const unstaged = parseNameStatus(runGit(['diff', '--name-status'], cwd));
-  const staged = parseNameStatus(runGit(['diff', '--cached', '--name-status'], cwd));
+  const unstaged = parseNameStatus(runGit(['diff', '--name-status'], cwd), 'unstaged');
+  const staged = parseNameStatus(runGit(['diff', '--cached', '--name-status'], cwd), 'staged');
   const changes = mergeChanges([...staged, ...unstaged]);
   const stats = mergeStats([
     parseNumstat(runGit(['diff', '--cached', '--numstat'], cwd)),
     parseNumstat(runGit(['diff', '--numstat'], cwd)),
   ]);
+  const diffStat = mergeDiffStats([
+    parseDiffStat(runGit(['diff', '--cached', '--stat'], cwd)),
+    parseDiffStat(runGit(['diff', '--stat'], cwd)),
+  ]);
 
-  return buildPlan(changes, stats);
+  return buildPlan(changes, stats, diffStat);
 }
 
 function mergeChanges(changes) {
   const byPath = new Map();
   for (const change of changes) {
-    byPath.set(change.path, { ...byPath.get(change.path), ...change });
+    const existing = byPath.get(change.path);
+    if (!existing) {
+      byPath.set(change.path, change);
+      continue;
+    }
+    byPath.set(change.path, {
+      ...existing,
+      ...change,
+      previousPath: existing.previousPath ?? change.previousPath,
+      source: existing.source === change.source ? change.source : 'staged+unstaged',
+    });
   }
   return [...byPath.values()];
 }
@@ -158,21 +205,59 @@ function mergeStats(statMaps) {
   return merged;
 }
 
+function mergeDiffStats(stats) {
+  const nonEmpty = stats.filter((stat) => stat.raw.length > 0);
+  if (nonEmpty.length === 0) return { raw: '', summary: '0 files changed', files: [] };
+  return {
+    raw: nonEmpty.map((stat) => stat.raw).join('\n'),
+    summary: summarizeStats(nonEmpty),
+    files: nonEmpty.flatMap((stat) => stat.files),
+  };
+}
+
+function summarizeStats(stats) {
+  let files = 0;
+  let insertions = 0;
+  let deletions = 0;
+
+  for (const stat of stats) {
+    const summary = stat.summary;
+    files += Number(summary.match(/(\d+) files? changed/)?.[1] ?? 0);
+    insertions += Number(summary.match(/(\d+) insertions?/)?.[1] ?? 0);
+    deletions += Number(summary.match(/(\d+) deletions?/)?.[1] ?? 0);
+  }
+
+  const parts = [`${files} ${files === 1 ? 'file' : 'files'} changed`];
+  if (insertions > 0) parts.push(`${insertions} ${insertions === 1 ? 'insertion' : 'insertions'}(+)`);
+  if (deletions > 0) parts.push(`${deletions} ${deletions === 1 ? 'deletion' : 'deletions'}(-)`);
+  return parts.join(', ');
+}
+
 function groupForPath(path) {
-  if (path.startsWith('.github/')) return 'ci and repository automation';
-  if (path.startsWith('docs/') || path.endsWith('.md')) return 'documentation';
-  if (path.startsWith('test/') || path.endsWith('.test.js')) return 'tests';
-  if (path.startsWith('src/') || path.endsWith('.js')) return 'source code';
-  return path.split('/')[0] || 'root files';
+  for (const [group, matches] of GROUP_RULES) {
+    if (matches(path)) return group;
+  }
+  return path.includes('/') ? `${path.split('/')[0]} files` : 'root files';
 }
 
 function riskFlags(change, stats = { added: 0, deleted: 0, binary: false }) {
   const flags = [];
   if (change.status === 'D') flags.push('deletion');
   if (change.status === 'R') flags.push('rename');
+  if (change.status === 'U') flags.push('merge-conflict');
   if (stats.binary) flags.push('binary-file');
   if ((stats.added ?? 0) + (stats.deleted ?? 0) >= 400) flags.push('large-change');
+  if (/lock$|lock\.json$|lock\.yaml$|package-lock\.json$/.test(change.path)) flags.push('dependency-lockfile');
+  if (/\.env(\.|$)|secret|credential|private-key/i.test(change.path)) flags.push('sensitive-path');
   return flags;
+}
+
+function commitMessageFor(group, files) {
+  const statuses = new Set(files.map((file) => file.status));
+  if (statuses.size === 1 && statuses.has('A')) return `Add ${group}`;
+  if (statuses.size === 1 && statuses.has('D')) return `Remove ${group}`;
+  if (statuses.has('R') && files.length === 1) return `Rename ${group}`;
+  return `Update ${group}`;
 }
 
 function runGit(args, cwd) {
@@ -184,7 +269,7 @@ function runGit(args, cwd) {
 }
 
 function printHelp() {
-  console.log(`Usage: atomcommit [plan] [--json]\n\nCommands:\n  plan           Analyze the local git diff and print an atomic commit plan.\n\nDefault:\n  atomcommit is equivalent to atomcommit plan.\n\nOptions:\n  --json         Print machine-readable JSON instead of Markdown.\n  -h, --help     Show this help.\n  -v, --version  Print the package version.`);
+  console.log(`Usage: atomcommit [plan] [--json]\n\nCommands:\n  plan       Analyze the local git diff and print an atomic commit plan.\n\nDefault:\n  atomcommit is equivalent to atomcommit plan.\n\nOptions:\n  --json        Print machine-readable JSON instead of Markdown.\n  -h, --help    Show this help.\n  -v, --version Print the CLI version.\n\nSafety:\n  atomcommit only runs read-only git diff commands and never stages, commits, or modifies files.`);
 }
 
 export function main(argv = process.argv.slice(2), cwd = process.cwd()) {
@@ -193,7 +278,7 @@ export function main(argv = process.argv.slice(2), cwd = process.cwd()) {
     return 0;
   }
 
-  if (argv.includes('--version') || argv.includes('-v')) {
+  if (argv.includes('--version') || argv.includes('-v') || argv[0] === 'version') {
     console.log(VERSION);
     return 0;
   }

@@ -1,53 +1,35 @@
 {
-  "version": "0.1",
-  "source": "taskbrief-orchestration",
+  "version": "0.2",
+  "source": "oss-factory",
   "workspace": "default",
   "repo": "atomcommit",
-  "generated_from": "taskbrief + llm-orchestration (openai:gpt-4.1-mini)",
-  "summary": {
-    "total_tasks": 1,
-    "dispatchable_now": [],
-    "blocked_tasks": [
-      "atomcommit-implement-cli-command-atomcommit-plan-to-analyze-git-working-tree-and-pr"
-    ],
-    "final_validation_task_ids": []
-  },
-  "waves": [
-    {
-      "wave": 1,
-      "name": "Implementation",
-      "mode": "sequential",
-      "dispatch": "after_human_decision",
-      "task_ids": [
-        "atomcommit-implement-cli-command-atomcommit-plan-to-analyze-git-working-tree-and-pr"
-      ]
-    }
+  "task_id": "atomcommit-implement-cli-command-atomcommit-plan-to-analyze-git-working-tree-and-pr",
+  "status": "completed-locally",
+  "worktree": "/Users/roger/Developer/my-opensource/.worktrees/atomcommit-factory-20260503-0630",
+  "base_commit": "9a40770",
+  "deliverables": [
+    "atomcommit plan CLI",
+    "Markdown output",
+    "JSON output",
+    "staged and unstaged diff support",
+    "risk flags",
+    "fixtures",
+    "examples",
+    "tests",
+    "README",
+    "CONTRIBUTING",
+    "SECURITY"
   ],
-  "tasks": [
-    {
-      "id": "atomcommit-implement-cli-command-atomcommit-plan-to-analyze-git-working-tree-and-pr",
-      "title": "Implement CLI command `atomcommit plan` to analyze git working tree and produce atomic commit plan",
-      "repo": "atomcommit",
-      "branch": "agent/implement-cli-command-atomcommit-plan-to-analyze-git-working-tree-and-pr",
-      "type": "feature",
-      "risk": "medium",
-      "phase": "implementation",
-      "depends_on": [],
-      "can_run_concurrently_with": [],
-      "dispatchable": false,
-      "blocked_by": [
-        "Approve grouping logic and risk flag criteria",
-        "Validate commit message suggestion quality"
-      ],
-      "verification": [
-        "Run fixture repos with mixed changes through CLI",
-        "Verify output matches snapshot tests for generated plans",
-        "Check output includes deterministic risk flags and suggested commit messages"
-      ]
-    }
+  "verification": [
+    "npm test",
+    "npm run check",
+    "npm run build",
+    "npm run smoke",
+    "npm run validate"
   ],
-  "dispatch_prompt": "No tasks are safe to dispatch yet. Resolve the blocked tasks or human decisions first, then dispatch the first unblocked wave.",
-  "refinement_notes": [
-    "The single task depends on human decisions to approve grouping logic and validate commit message quality, so it must be dispatched after those approvals, resulting in a single sequential wave. No other tasks exist to run concurrently or in sequence."
+  "release_steps": [
+    "push HEAD to origin/main",
+    "update GitHub description/topics",
+    "run branch protection helper"
   ]
 }
