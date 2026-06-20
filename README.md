@@ -24,12 +24,20 @@ atomcommit
 This is equivalent to `atomcommit plan` and prints a Markdown atomic commit plan.
 Use `atomcommit --json` only when another tool needs machine-readable output.
 
+Check the installed CLI surface before release:
+
+```sh
+atomcommit --help
+atomcommit --version
+```
+
 ## Verify
 
 Run the local validation script before opening a pull request:
 
 ```sh
 bash scripts/validate.sh
+npm run release:check
 ```
 
 `scripts/validate.sh` runs the repository's standard local checks when they are defined and will also run `agent-qc ready` when `agent-qc` is installed. Missing `agent-qc` is treated as a skip, not a failure.

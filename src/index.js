@@ -2,6 +2,8 @@
 import { spawnSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
 
+const VERSION = '0.1.0';
+
 const STATUS_LABELS = {
   A: 'added',
   C: 'copied',
@@ -182,12 +184,17 @@ function runGit(args, cwd) {
 }
 
 function printHelp() {
-  console.log(`Usage: atomcommit [plan] [--json]\n\nCommands:\n  plan       Analyze the local git diff and print an atomic commit plan.\n\nDefault:\n  atomcommit is equivalent to atomcommit plan.\n\nOptions:\n  --json     Print machine-readable JSON instead of Markdown.\n  -h, --help Show this help.`);
+  console.log(`Usage: atomcommit [plan] [--json]\n\nCommands:\n  plan           Analyze the local git diff and print an atomic commit plan.\n\nDefault:\n  atomcommit is equivalent to atomcommit plan.\n\nOptions:\n  --json         Print machine-readable JSON instead of Markdown.\n  -h, --help     Show this help.\n  -v, --version  Print the package version.`);
 }
 
 export function main(argv = process.argv.slice(2), cwd = process.cwd()) {
   if (argv.includes('--help') || argv.includes('-h')) {
     printHelp();
+    return 0;
+  }
+
+  if (argv.includes('--version') || argv.includes('-v')) {
+    console.log(VERSION);
     return 0;
   }
 
