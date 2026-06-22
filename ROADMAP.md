@@ -6,22 +6,20 @@ contributors, and implementation constraints.
 
 ## Now
 
-- Define the smallest useful project scope.
-- Keep repository setup, documentation, and verification easy for contributors
-  to follow.
-- Ship small, reviewable improvements.
+- Keep the git-diff planner deterministic and local-only.
+- Verify the CLI with fixture-backed tests and smoke checks before release.
+- Document the V0.1 safety model and pack contents clearly.
 
 ## Next
 
-- Add the next capabilities that directly support the project's primary users.
-- Improve tests, docs, and examples around the most used workflows.
-- Reduce setup friction discovered during early use.
+- Add optional configuration for grouping rules and sensitive-path patterns.
+- Provide examples for staged-only and mixed staged/unstaged workflows.
+- Add richer JSON schema documentation for agent integrations.
 
 ## Later
 
-- Consider larger features after the core workflow is stable.
-- Add automation only where it removes repeated maintainer work.
-- Revisit packaging, deployment, or integration options based on real demand.
+- Explore editor and GitHub Action integrations once the CLI contract is stable.
+- Consider commit-message templates after enough real plans are reviewed.
 
 ## Not Planned
 

@@ -1,10 +1,10 @@
 # atomcommit
 
-atomcommit is an early-stage local-first developer tool.
+`atomcommit` is a local-first CLI that turns staged and unstaged git diffs into deterministic atomic commit plans.
 
 ## Status
 
-This repository is early-stage. The README now reflects the current project intent from `docs/PRD.md`, but behavior should still be treated as pre-1.0 until implementation, examples, and release checks mature.
+Early V0.1 release candidate. The planner is useful for local git diffs, but it does not stage files, create commits, push branches, or infer product intent.
 
 ## Install from a checkout
 
@@ -22,20 +22,48 @@ npm install -g atomcommit
 
 ## Use
 
-Start by reading the product notes and running the local checks:
-
-```sh
-sed -n '1,120p' docs/PRD.md
-npm test
-```
-
 Generate an atomic commit plan from a repository with local changes:
 
 ```sh
+atomcommit
 atomcommit plan
-atomcommit plan --json
-atomcommit --version
 ```
+
+Use JSON output for automation:
+
+```sh
+atomcommit plan --json
+```
+
+Print version or help without needing to be inside a git repository:
+
+```sh
+atomcommit --version
+atomcommit --help
+```
+
+## What it reads
+
+`atomcommit` shells out to read-only git diff commands:
+
+- `git diff --name-status`
+- `git diff --cached --name-status`
+- `git diff --numstat`
+- `git diff --stat`
+
+It groups changes by repository area such as documentation, tests, source code, package metadata, and CI automation. It also flags review risks such as deletions, renames, lockfiles, large changes, binary files, and sensitive-looking paths.
+
+## Fixture smoke
+
+The repository includes a deterministic mixed-change fixture:
+
+```sh
+bash fixtures/setup-mixed-changes.sh /tmp/atomcommit-fixture
+cd /tmp/atomcommit-fixture
+node /path/to/atomcommit/src/index.js plan --json
+```
+
+The fixture covers source edits, docs, tests, workflow changes, a rename, and a deletion.
 
 ## Verification
 
@@ -50,9 +78,10 @@ bash scripts/validate.sh
 
 ## Limitations
 
-- The package is still a v0.1.0 project and may not expose a finished CLI or public API yet.
-- Treat the PRD as direction, not a guarantee that every listed capability is implemented.
-- Do not use the package for production security, compliance, or release decisions until tests and examples cover that workflow.
+- The package is still a v0.1.0 project and its JSON shape may change before 1.0.
+- Commit boundaries are structural suggestions. Humans still choose the final history.
+- Sensitive-path flags are heuristics, not a secret scanner or compliance control.
+- Git rename detection follows `git diff --name-status`; unusual diff settings can affect rename reporting.
 
 ## Contributing
 
@@ -65,12 +94,6 @@ See [SECURITY.md](SECURITY.md). Do not include secrets, private tokens, propriet
 ## License
 
 MIT
-
-## Verification
-
-Run the release-readiness checks that match this package before publishing or opening a release PR.
-
-- `npm run build` - compile the package artifacts
 
 ## Release Verification
 

@@ -8,10 +8,8 @@ trap 'rm -rf "$tmp_dir"' EXIT
 fixture_repo="$tmp_dir/mixed-changes-repo"
 bash "$repo_root/fixtures/setup-mixed-changes.sh" "$fixture_repo" >/dev/null
 
-markdown_output="$(node "$repo_root/src/index.js" plan < /dev/null 2>/dev/null || true)"
-if [ -z "$markdown_output" ]; then
-  : # running outside a git repo may fail; the fixture smoke below is authoritative
-fi
+node "$repo_root/src/index.js" --help | grep -q 'Usage: atomcommit'
+test "$(node "$repo_root/src/index.js" --version)" = "0.1.0"
 
 cd "$fixture_repo"
 node "$repo_root/src/index.js" plan > "$tmp_dir/plan.md"
