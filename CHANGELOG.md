@@ -9,7 +9,9 @@ format and uses semantic versioning when versioned releases are published.
 
 ### Added
 
-- Initial project setup.
+- Release-candidate metadata, package allowlist, and npm pack smoke coverage.
+- Fixture-backed CLI smoke test for Markdown and JSON output.
+- README quickstart, safety notes, and release verification commands.
 
 ## Release Links
 
