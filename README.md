@@ -20,9 +20,15 @@ After publication, install the CLI with npm:
 npm install -g atomcommit
 ```
 
-## Use
+## Quickstart
 
-Generate an atomic commit plan from a repository with local changes:
+From a checkout, generate an atomic commit plan for the current repository:
+
+```sh
+node src/index.js plan
+```
+
+After installing the package binary, use the shorter command:
 
 ```sh
 atomcommit
