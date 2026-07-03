@@ -28,7 +28,8 @@
     "smoke": "bash scripts/smoke.sh",
     "package:smoke": "npm pack --dry-run",
     "release:check": "npm run check && npm run smoke && npm run package:smoke",
-    "validate": "bash scripts/validate.sh"
+    "validate": "bash scripts/validate.sh",
+    "lint": "npm run check"
   },
   "keywords": [
     "git",
