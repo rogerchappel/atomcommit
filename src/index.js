@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { spawnSync } from 'node:child_process';
-import { pathToFileURL } from 'node:url';
+import { realpathSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 
 const STATUS_LABELS = {
   A: 'added',
@@ -307,6 +308,16 @@ export function main(argv = process.argv.slice(2), cwd = process.cwd()) {
   return 0;
 }
 
-if (import.meta.url === pathToFileURL(process.argv[1]).href) {
+function isMainModule(moduleUrl, argvPath = process.argv[1]) {
+  if (!argvPath) return false;
+
+  try {
+    return realpathSync(fileURLToPath(moduleUrl)) === realpathSync(argvPath);
+  } catch {
+    return false;
+  }
+}
+
+if (isMainModule(import.meta.url)) {
   process.exitCode = main();
 }
