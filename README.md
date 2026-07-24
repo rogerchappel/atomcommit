@@ -1,6 +1,6 @@
 # atomcommit
 
-`atomcommit` is a local-first CLI that turns staged and unstaged git diffs into deterministic atomic commit plans.
+`atomcommit` is a local-first CLI that turns staged, unstaged, and ordinary untracked changes into deterministic atomic commit plans.
 
 ## Status
 
@@ -50,12 +50,16 @@ atomcommit --help
 
 ## What it reads
 
-`atomcommit` shells out to read-only git diff commands:
+`atomcommit` shells out only to these read-only Git commands:
 
 - `git diff --name-status`
 - `git diff --cached --name-status`
 - `git diff --numstat`
 - `git diff --stat`
+- `git ls-files --others --exclude-standard -z`
+- `git diff --no-index --numstat -- /dev/null <untracked-path>`
+
+The `git ls-files` query includes ordinary untracked files while respecting Git ignore rules. NUL-delimited paths preserve spaces and other special characters. The CLI remains read-only: it does not stage files, alter the index, or modify the working tree.
 
 It groups changes by repository area such as documentation, tests, source code, package metadata, and CI automation. It also flags review risks such as deletions, renames, lockfiles, large changes, binary files, and sensitive-looking paths.
 
