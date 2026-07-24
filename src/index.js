@@ -64,6 +64,13 @@ export function parseNumstat(output) {
   return byPath;
 }
 
+export function parseUntrackedPaths(output) {
+  return output
+    .split('\0')
+    .filter(Boolean)
+    .sort((a, b) => a.localeCompare(b));
+}
+
 export function parseDiffStat(output) {
   const lines = output.trim().split('\n').filter(Boolean);
   const summary = (lines.at(-1) ?? '0 files changed').trim();
@@ -160,17 +167,53 @@ export function renderMarkdown(plan) {
 export function collectGitDiff(cwd = process.cwd()) {
   const unstaged = parseNameStatus(runGit(['diff', '--name-status'], cwd), 'unstaged');
   const staged = parseNameStatus(runGit(['diff', '--cached', '--name-status'], cwd), 'staged');
-  const changes = mergeChanges([...staged, ...unstaged]);
+  const untrackedPaths = parseUntrackedPaths(runGit(['ls-files', '--others', '--exclude-standard', '-z'], cwd));
+  const untracked = untrackedPaths.map((path) => ({
+    path,
+    previousPath: null,
+    status: 'A',
+    statusDetail: 'A',
+    statusLabel: 'added',
+    score: null,
+    source: 'untracked',
+  }));
+  const untrackedStats = new Map(untrackedPaths.map((path) => [path, untrackedStat(path, cwd)]));
+  const changes = mergeChanges([...staged, ...unstaged, ...untracked]);
   const stats = mergeStats([
     parseNumstat(runGit(['diff', '--cached', '--numstat'], cwd)),
     parseNumstat(runGit(['diff', '--numstat'], cwd)),
+    untrackedStats,
   ]);
   const diffStat = mergeDiffStats([
     parseDiffStat(runGit(['diff', '--cached', '--stat'], cwd)),
     parseDiffStat(runGit(['diff', '--stat'], cwd)),
+    untrackedDiffStat(untrackedStats),
   ]);
 
   return buildPlan(changes, stats, diffStat);
+}
+
+function untrackedStat(path, cwd) {
+  const output = runGit(['diff', '--no-index', '--numstat', '--', '/dev/null', path], cwd, [0, 1]);
+  const [added, deleted] = output.split('\t');
+  const binary = added === '-' || deleted === '-';
+  return {
+    added: binary ? null : Number(added),
+    deleted: binary ? null : Number(deleted),
+    binary,
+  };
+}
+
+function untrackedDiffStat(stats) {
+  if (stats.size === 0) return { raw: '', summary: '0 files changed', files: [] };
+  let insertions = 0;
+  for (const stat of stats.values()) {
+    insertions += stat.added ?? 0;
+  }
+  const parts = [`${stats.size} ${stats.size === 1 ? 'file' : 'files'} changed`];
+  if (insertions > 0) parts.push(`${insertions} ${insertions === 1 ? 'insertion' : 'insertions'}(+)`);
+  const summary = parts.join(', ');
+  return { raw: summary, summary, files: [] };
 }
 
 function mergeChanges(changes) {
@@ -261,16 +304,16 @@ function commitMessageFor(group, files) {
   return `Update ${group}`;
 }
 
-function runGit(args, cwd) {
+function runGit(args, cwd, allowedStatuses = [0]) {
   const result = spawnSync('git', args, { cwd, encoding: 'utf8' });
-  if (result.status !== 0) {
+  if (!allowedStatuses.includes(result.status)) {
     throw new Error(`git ${args.join(' ')} failed: ${result.stderr.trim()}`);
   }
   return result.stdout;
 }
 
 function printHelp() {
-  console.log(`Usage: atomcommit [plan] [--json]\n\nCommands:\n  plan       Analyze the local git diff and print an atomic commit plan.\n\nDefault:\n  atomcommit is equivalent to atomcommit plan.\n\nOptions:\n  --json        Print machine-readable JSON instead of Markdown.\n  -h, --help    Show this help.\n  -v, --version Print the CLI version.\n\nSafety:\n  atomcommit only runs read-only git diff commands and never stages, commits, or modifies files.`);
+  console.log(`Usage: atomcommit [plan] [--json]\n\nCommands:\n  plan       Analyze local tracked and untracked changes and print an atomic commit plan.\n\nDefault:\n  atomcommit is equivalent to atomcommit plan.\n\nOptions:\n  --json        Print machine-readable JSON instead of Markdown.\n  -h, --help    Show this help.\n  -v, --version Print the CLI version.\n\nSafety:\n  atomcommit only runs read-only git diff and git ls-files commands and never stages, commits, or modifies files.`);
 }
 
 export function main(argv = process.argv.slice(2), cwd = process.cwd()) {

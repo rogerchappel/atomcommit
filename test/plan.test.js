@@ -6,7 +6,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { test } from 'node:test';
 
-import { buildPlan, parseDiffStat, parseNameStatus, parseNumstat, renderMarkdown } from '../src/index.js';
+import { buildPlan, parseDiffStat, parseNameStatus, parseNumstat, parseUntrackedPaths, renderMarkdown } from '../src/index.js';
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
 const fixturesDir = join(__dirname, '..', 'fixtures');
@@ -65,6 +65,10 @@ test('parses git stat summaries for plan metadata', () => {
   assert.deepEqual(stat.files, ['src/index.js | 2 +-', 'test/plan.test.js | 4 ++++']);
 });
 
+test('parses NUL-delimited untracked paths deterministically', () => {
+  assert.deepEqual(parseUntrackedPaths('z.js\0docs/a [draft].md\0'), ['docs/a [draft].md', 'z.js']);
+});
+
 test('builds deterministic grouped plan and markdown', () => {
   const plan = buildPlan(parseNameStatus(nameStatusFixture), parseNumstat(numstatFixture));
 
@@ -98,6 +102,70 @@ test('cli reads local git diff without mutating the working tree', () => {
   assert.equal(afterStatus, beforeStatus);
   assert.match(markdown, /^# Atomic Commit Plan/);
   assert.equal(JSON.parse(output).commits[0].message, 'Update source code');
+});
+
+test('cli plans an untracked-only file without mutating it', () => {
+  const repo = createRepo();
+  mkdirSync(join(repo, 'src'));
+  writeFileSync(join(repo, 'src/new-feature.js'), 'export const feature = true;\n');
+
+  const beforeStatus = gitStatus(repo);
+  const { markdown, json } = runCli(repo);
+
+  assert.equal(gitStatus(repo), beforeStatus);
+  assert.deepEqual(json.summary, {
+    filesChanged: 1,
+    suggestedCommits: 1,
+    diffStat: '1 file changed, 1 insertion(+)',
+  });
+  assert.equal(json.commits[0].message, 'Add source code');
+  assert.deepEqual(json.commits[0].files[0], {
+    path: 'src/new-feature.js',
+    previousPath: null,
+    status: 'A',
+    statusDetail: 'A',
+    statusLabel: 'added',
+    score: null,
+    source: 'untracked',
+    stats: { added: 1, deleted: 0, binary: false },
+    group: 'source code',
+    riskFlags: [],
+  });
+  assert.match(markdown, /added: src\/new-feature\.js \(\+1\/-0, untracked\)/);
+});
+
+test('cli combines tracked and untracked files in deterministic path order', () => {
+  const repo = createRepo({ initialFiles: { 'src/z.js': 'before\n' } });
+  writeFileSync(join(repo, 'src/z.js'), 'after\n');
+  writeFileSync(join(repo, 'src/a.js'), 'new\n');
+
+  const { json } = runCli(repo);
+  assert.equal(json.summary.filesChanged, 2);
+  assert.deepEqual(
+    json.commits[0].files.map(({ path, source }) => [path, source]),
+    [['src/a.js', 'untracked'], ['src/z.js', 'unstaged']],
+  );
+});
+
+test('cli excludes ignored untracked files', () => {
+  const repo = createRepo({ initialFiles: { '.gitignore': '*.log\n' } });
+  writeFileSync(join(repo, 'debug.log'), 'ignored\n');
+  writeFileSync(join(repo, 'visible.txt'), 'included\n');
+
+  const { json } = runCli(repo);
+  assert.deepEqual(json.commits.flatMap((commit) => commit.files.map((file) => file.path)), ['visible.txt']);
+});
+
+test('cli preserves special characters in untracked paths', () => {
+  const repo = createRepo();
+  const specialPath = 'src/new [draft] #1.js';
+  mkdirSync(join(repo, 'src'));
+  writeFileSync(join(repo, specialPath), 'new\n');
+
+  const first = runCli(repo);
+  const second = runCli(repo);
+  assert.equal(first.json.commits[0].files[0].path, specialPath);
+  assert.deepEqual(first.json, second.json);
 });
 
 test('cli prints version without requiring a git repo', () => {
@@ -202,3 +270,30 @@ test('snapshot: mixed changes produce consistent plan', () => {
   assert.ok(deletedFile, 'should find deleted file');
   assert.equal(deletedFile.path, 'src/asset.bin', 'deleted file should be src/asset.bin');
 });
+
+function createRepo({ initialFiles = {} } = {}) {
+  const repo = mkdtempSync(join(tmpdir(), 'atomcommit-untracked-'));
+  execFileSync('git', ['init'], { cwd: repo });
+  execFileSync('git', ['config', 'user.email', 'test@example.com'], { cwd: repo });
+  execFileSync('git', ['config', 'user.name', 'Test User'], { cwd: repo });
+  for (const [path, contents] of Object.entries(initialFiles)) {
+    mkdirSync(join(repo, path, '..'), { recursive: true });
+    writeFileSync(join(repo, path), contents);
+  }
+  writeFileSync(join(repo, 'tracked.txt'), 'initial\n');
+  execFileSync('git', ['add', '.'], { cwd: repo });
+  execFileSync('git', ['commit', '-m', 'initial'], { cwd: repo });
+  return repo;
+}
+
+function runCli(repo) {
+  const cliPath = join(process.cwd(), 'src/index.js');
+  return {
+    markdown: execFileSync(process.execPath, [cliPath], { cwd: repo, encoding: 'utf8' }),
+    json: JSON.parse(execFileSync(process.execPath, [cliPath, '--json'], { cwd: repo, encoding: 'utf8' })),
+  };
+}
+
+function gitStatus(repo) {
+  return execFileSync('git', ['status', '--short'], { cwd: repo, encoding: 'utf8' });
+}
