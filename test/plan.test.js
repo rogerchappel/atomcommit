@@ -147,6 +147,46 @@ test('cli combines tracked and untracked files in deterministic path order', () 
   );
 });
 
+test('cli preserves a staged rename that is edited again unstaged', () => {
+  const repo = createRepo({ initialFiles: { 'src/old.js': 'export const value = 1;\n' } });
+  execFileSync('git', ['mv', 'src/old.js', 'src/new.js'], { cwd: repo });
+  execFileSync('git', ['add', '-A'], { cwd: repo });
+  writeFileSync(join(repo, 'src/new.js'), 'export const value = 1;\nexport const next = 2;\n');
+
+  const { markdown, json } = runCli(repo);
+  const file = json.commits[0].files[0];
+
+  assert.deepEqual(json.summary, {
+    filesChanged: 1,
+    suggestedCommits: 1,
+    diffStat: '1 file changed, 1 insertion(+)',
+  });
+  assert.deepEqual(
+    {
+      path: file.path,
+      previousPath: file.previousPath,
+      status: file.status,
+      statusDetail: file.statusDetail,
+      statusLabel: file.statusLabel,
+      source: file.source,
+      stats: file.stats,
+      riskFlags: file.riskFlags,
+    },
+    {
+      path: 'src/new.js',
+      previousPath: 'src/old.js',
+      status: 'R',
+      statusDetail: 'R100',
+      statusLabel: 'renamed',
+      source: 'staged+unstaged',
+      stats: { added: 1, deleted: 0, binary: false },
+      riskFlags: ['rename'],
+    },
+  );
+  assert.match(markdown, /renamed: src\/new\.js \(from src\/old\.js\) \(\+1\/-0, staged \+ unstaged\)/);
+  assert.match(markdown, /Risk flags: rename/);
+});
+
 test('cli excludes ignored untracked files', () => {
   const repo = createRepo({ initialFiles: { '.gitignore': '*.log\n' } });
   writeFileSync(join(repo, 'debug.log'), 'ignored\n');
