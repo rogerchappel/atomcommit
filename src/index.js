@@ -188,7 +188,7 @@ export function collectGitDiff(cwd = process.cwd()) {
     parseDiffStat(runGit(['diff', '--cached', '--stat'], cwd)),
     parseDiffStat(runGit(['diff', '--stat'], cwd)),
     untrackedDiffStat(untrackedStats),
-  ]);
+  ], changes.length);
 
   return buildPlan(changes, stats, diffStat);
 }
@@ -224,10 +224,14 @@ function mergeChanges(changes) {
       byPath.set(change.path, change);
       continue;
     }
+    const identity = existing.status === 'R' || existing.status === 'C' ? existing : change;
     byPath.set(change.path, {
-      ...existing,
       ...change,
-      previousPath: existing.previousPath ?? change.previousPath,
+      status: identity.status,
+      statusDetail: identity.statusDetail,
+      statusLabel: identity.statusLabel,
+      score: identity.score,
+      previousPath: identity.previousPath ?? existing.previousPath ?? change.previousPath,
       source: existing.source === change.source ? change.source : 'staged+unstaged',
     });
   }
@@ -249,17 +253,17 @@ function mergeStats(statMaps) {
   return merged;
 }
 
-function mergeDiffStats(stats) {
+function mergeDiffStats(stats, uniqueFiles) {
   const nonEmpty = stats.filter((stat) => stat.raw.length > 0);
   if (nonEmpty.length === 0) return { raw: '', summary: '0 files changed', files: [] };
   return {
     raw: nonEmpty.map((stat) => stat.raw).join('\n'),
-    summary: summarizeStats(nonEmpty),
+    summary: summarizeStats(nonEmpty, uniqueFiles),
     files: nonEmpty.flatMap((stat) => stat.files),
   };
 }
 
-function summarizeStats(stats) {
+function summarizeStats(stats, uniqueFiles) {
   let files = 0;
   let insertions = 0;
   let deletions = 0;
@@ -271,6 +275,7 @@ function summarizeStats(stats) {
     deletions += Number(summary.match(/(\d+) deletions?/)?.[1] ?? 0);
   }
 
+  files = uniqueFiles ?? files;
   const parts = [`${files} ${files === 1 ? 'file' : 'files'} changed`];
   if (insertions > 0) parts.push(`${insertions} ${insertions === 1 ? 'insertion' : 'insertions'}(+)`);
   if (deletions > 0) parts.push(`${deletions} ${deletions === 1 ? 'deletion' : 'deletions'}(-)`);
