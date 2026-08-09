@@ -26,6 +26,21 @@ const GROUP_RULES = [
 const VERSION = '0.1.0';
 
 export function parseNameStatus(output, source = 'unstaged') {
+  if (output.includes('\0')) {
+    const fields = output.split('\0');
+    const changes = [];
+
+    for (let index = 0; index < fields.length && fields[index];) {
+      const rawStatus = fields[index++];
+      const status = rawStatus[0];
+      const previousPath = status === 'R' || status === 'C' ? fields[index++] : null;
+      const path = fields[index++];
+      changes.push(nameStatusChange(rawStatus, path, previousPath, source));
+    }
+
+    return changes;
+  }
+
   return output
     .trim()
     .split('\n')
@@ -34,34 +49,63 @@ export function parseNameStatus(output, source = 'unstaged') {
       const parts = line.split('\t');
       const rawStatus = parts[0];
       const status = rawStatus[0];
-      const score = rawStatus.length > 1 ? rawStatus.slice(1) : null;
       const path = status === 'R' || status === 'C' ? parts[2] : parts[1];
       const previousPath = status === 'R' || status === 'C' ? parts[1] : null;
 
-      return {
-        path,
-        previousPath,
-        status,
-        statusDetail: rawStatus,
-        statusLabel: STATUS_LABELS[status] ?? 'changed',
-        score,
-        source,
-      };
+      return nameStatusChange(rawStatus, path, previousPath, source);
     });
 }
 
 export function parseNumstat(output) {
   const byPath = new Map();
 
+  if (output.includes('\0')) {
+    const fields = output.split('\0');
+
+    for (let index = 0; index < fields.length && fields[index];) {
+      const record = fields[index++];
+      const firstTab = record.indexOf('\t');
+      const secondTab = record.indexOf('\t', firstTab + 1);
+      const addedText = record.slice(0, firstTab);
+      const deletedText = record.slice(firstTab + 1, secondTab);
+      const path = record.slice(secondTab + 1);
+      let destinationPath = path;
+      if (!destinationPath) {
+        index += 1; // The first path is the rename/copy source.
+        destinationPath = fields[index++];
+      }
+      byPath.set(destinationPath, numstatEntry(addedText, deletedText));
+    }
+
+    return byPath;
+  }
+
   for (const line of output.trim().split('\n').filter(Boolean)) {
     const parts = line.split('\t');
-    const added = parts[0] === '-' ? null : Number(parts[0]);
-    const deleted = parts[1] === '-' ? null : Number(parts[1]);
     const path = parts.at(-1);
-    byPath.set(path, { added, deleted, binary: added === null || deleted === null });
+    byPath.set(path, numstatEntry(parts[0], parts[1]));
   }
 
   return byPath;
+}
+
+function nameStatusChange(rawStatus, path, previousPath, source) {
+  const status = rawStatus[0];
+  return {
+    path,
+    previousPath,
+    status,
+    statusDetail: rawStatus,
+    statusLabel: STATUS_LABELS[status] ?? 'changed',
+    score: rawStatus.length > 1 ? rawStatus.slice(1) : null,
+    source,
+  };
+}
+
+function numstatEntry(addedText, deletedText) {
+  const added = addedText === '-' ? null : Number(addedText);
+  const deleted = deletedText === '-' ? null : Number(deletedText);
+  return { added, deleted, binary: added === null || deleted === null };
 }
 
 export function parseUntrackedPaths(output) {
@@ -165,8 +209,8 @@ export function renderMarkdown(plan) {
 }
 
 export function collectGitDiff(cwd = process.cwd()) {
-  const unstaged = parseNameStatus(runGit(['diff', '--name-status'], cwd), 'unstaged');
-  const staged = parseNameStatus(runGit(['diff', '--cached', '--name-status'], cwd), 'staged');
+  const unstaged = parseNameStatus(runGit(['diff', '--name-status', '-z'], cwd), 'unstaged');
+  const staged = parseNameStatus(runGit(['diff', '--cached', '--name-status', '-z'], cwd), 'staged');
   const untrackedPaths = parseUntrackedPaths(runGit(['ls-files', '--others', '--exclude-standard', '-z'], cwd));
   const untracked = untrackedPaths.map((path) => ({
     path,
@@ -180,8 +224,8 @@ export function collectGitDiff(cwd = process.cwd()) {
   const untrackedStats = new Map(untrackedPaths.map((path) => [path, untrackedStat(path, cwd)]));
   const changes = mergeChanges([...staged, ...unstaged, ...untracked]);
   const stats = mergeStats([
-    parseNumstat(runGit(['diff', '--cached', '--numstat'], cwd)),
-    parseNumstat(runGit(['diff', '--numstat'], cwd)),
+    parseNumstat(runGit(['diff', '--cached', '--numstat', '-z'], cwd)),
+    parseNumstat(runGit(['diff', '--numstat', '-z'], cwd)),
     untrackedStats,
   ]);
   const diffStat = mergeDiffStats([

@@ -54,6 +54,31 @@ test('parses git name-status metadata including renames', () => {
   ]);
 });
 
+test('parses NUL-delimited name-status and numstat without splitting paths', () => {
+  const tabPath = 'src/tab\tname.js';
+  const newlinePath = 'docs/new\nname.md';
+  const copyPath = 'docs/copy\tname.md';
+  const changes = parseNameStatus([
+    'M', tabPath,
+    'R087', 'docs/old\nname.md', newlinePath,
+    'C100', 'docs/source.md', copyPath,
+    '',
+  ].join('\0'));
+  const stats = parseNumstat([
+    `2\t1\t${tabPath}`,
+    '1\t3\t', 'docs/old\nname.md', newlinePath,
+    '',
+  ].join('\0'));
+
+  assert.deepEqual(changes.map(({ path, previousPath, statusDetail }) => ({ path, previousPath, statusDetail })), [
+    { path: tabPath, previousPath: null, statusDetail: 'M' },
+    { path: newlinePath, previousPath: 'docs/old\nname.md', statusDetail: 'R087' },
+    { path: copyPath, previousPath: 'docs/source.md', statusDetail: 'C100' },
+  ]);
+  assert.deepEqual(stats.get(tabPath), { added: 2, deleted: 1, binary: false });
+  assert.deepEqual(stats.get(newlinePath), { added: 1, deleted: 3, binary: false });
+});
+
 
 test('parses git stat summaries for plan metadata', () => {
   const stat = parseDiffStat(` src/index.js | 2 +-
@@ -206,6 +231,36 @@ test('cli preserves special characters in untracked paths', () => {
   const second = runCli(repo);
   assert.equal(first.json.commits[0].files[0].path, specialPath);
   assert.deepEqual(first.json, second.json);
+});
+
+test('cli preserves staged and unstaged tracked paths containing tabs and newlines', () => {
+  const stagedPath = 'src/staged\tname.js';
+  const unstagedPath = 'src/unstaged\nname.js';
+  const repo = createRepo({
+    initialFiles: {
+      [stagedPath]: 'before\n',
+      [unstagedPath]: 'one\ntwo\n',
+    },
+  });
+  writeFileSync(join(repo, stagedPath), 'before\nafter\n');
+  execFileSync('git', ['add', '--', stagedPath], { cwd: repo });
+  writeFileSync(join(repo, unstagedPath), 'changed\n');
+
+  const { markdown, json } = runCli(repo);
+  const files = json.commits.flatMap((commit) => commit.files);
+  const staged = files.find((file) => file.path === stagedPath);
+  const unstaged = files.find((file) => file.path === unstagedPath);
+
+  assert.deepEqual({ source: staged.source, stats: staged.stats }, {
+    source: 'staged',
+    stats: { added: 1, deleted: 0, binary: false },
+  });
+  assert.deepEqual({ source: unstaged.source, stats: unstaged.stats }, {
+    source: 'unstaged',
+    stats: { added: 1, deleted: 2, binary: false },
+  });
+  assert.ok(markdown.includes(stagedPath));
+  assert.ok(markdown.includes(unstagedPath));
 });
 
 test('cli prints version without requiring a git repo', () => {
