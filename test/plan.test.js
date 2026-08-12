@@ -156,7 +156,7 @@ test('cli plans an untracked-only file without mutating it', () => {
     group: 'source code',
     riskFlags: [],
   });
-  assert.match(markdown, /added: src\/new-feature\.js \(\+1\/-0, untracked\)/);
+  assert.match(markdown, /added: `"src\/new-feature\.js"` \(\+1\/-0, untracked\)/);
 });
 
 test('cli combines tracked and untracked files in deterministic path order', () => {
@@ -208,7 +208,7 @@ test('cli preserves a staged rename that is edited again unstaged', () => {
       riskFlags: ['rename'],
     },
   );
-  assert.match(markdown, /renamed: src\/new\.js \(from src\/old\.js\) \(\+1\/-0, staged \+ unstaged\)/);
+  assert.match(markdown, /renamed: `"src\/new\.js"` \(from `"src\/old\.js"`\) \(\+1\/-0, staged \+ unstaged\)/);
   assert.match(markdown, /Risk flags: rename/);
 });
 
