@@ -156,7 +156,7 @@ test('cli plans an untracked-only file without mutating it', () => {
     group: 'source code',
     riskFlags: [],
   });
-  assert.match(markdown, /added: src\/new-feature\.js \(\+1\/-0, untracked\)/);
+  assert.match(markdown, /added: `"src\/new-feature\.js"` \(\+1\/-0, untracked\)/);
 });
 
 test('cli combines tracked and untracked files in deterministic path order', () => {
@@ -208,7 +208,7 @@ test('cli preserves a staged rename that is edited again unstaged', () => {
       riskFlags: ['rename'],
     },
   );
-  assert.match(markdown, /renamed: src\/new\.js \(from src\/old\.js\) \(\+1\/-0, staged \+ unstaged\)/);
+  assert.match(markdown, /renamed: `"src\/new\.js"` \(from `"src\/old\.js"`\) \(\+1\/-0, staged \+ unstaged\)/);
   assert.match(markdown, /Risk flags: rename/);
 });
 
@@ -259,8 +259,31 @@ test('cli preserves staged and unstaged tracked paths containing tabs and newlin
     source: 'unstaged',
     stats: { added: 1, deleted: 2, binary: false },
   });
-  assert.ok(markdown.includes(stagedPath));
-  assert.ok(markdown.includes(unstagedPath));
+  assert.ok(markdown.includes('`"src/staged\\tname.js"`'));
+  assert.ok(markdown.includes('`"src/unstaged\\nname.js"`'));
+  assert.equal(markdown.split('\n').filter((line) => line.startsWith('- modified:')).length, 2);
+});
+
+test('markdown renders unusual tracked and untracked paths as single deterministic list items', () => {
+  const trackedPath = 'src/tracked\n- injected.md';
+  const untrackedPath = 'docs/`guide`\t# heading [draft].md';
+  const repo = createRepo({ initialFiles: { [trackedPath]: 'before\n' } });
+  writeFileSync(join(repo, trackedPath), 'after\n');
+  mkdirSync(join(repo, 'docs'));
+  writeFileSync(join(repo, untrackedPath), 'new\n');
+
+  const first = runCli(repo);
+  const second = runCli(repo);
+
+  assert.deepEqual(
+    first.json.commits.flatMap((commit) => commit.files.map((file) => file.path)).sort(),
+    [trackedPath, untrackedPath].sort(),
+  );
+  assert.equal(first.markdown, second.markdown);
+  assert.ok(first.markdown.includes('``"docs/`guide`\\t# heading [draft].md"``'));
+  assert.ok(first.markdown.includes('`"src/tracked\\n- injected.md"`'));
+  assert.equal(first.markdown.split('\n').filter((line) => /^- (added|modified):/.test(line)).length, 2);
+  assert.equal(first.markdown.split('\n').filter((line) => /^# heading|^- injected/.test(line)).length, 0);
 });
 
 test('cli prints version without requiring a git repo', () => {

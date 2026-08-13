@@ -169,6 +169,14 @@ export function buildPlan(changes, numstat = new Map(), diffStat = { raw: '', su
   };
 }
 
+function renderPath(path) {
+  const value = JSON.stringify(path);
+  const longestRun = Math.max(0, ...[...value.matchAll(/`+/g)].map(([run]) => run.length));
+  const fence = '`'.repeat(longestRun + 1);
+  const padding = value.startsWith('`') || value.endsWith('`') ? ' ' : '';
+  return `${fence}${padding}${value}${padding}${fence}`;
+}
+
 export function renderMarkdown(plan) {
   const lines = [
     '# Atomic Commit Plan',
@@ -193,9 +201,9 @@ export function renderMarkdown(plan) {
 
     for (const file of commit.files) {
       const stats = file.stats.binary ? 'binary' : `+${file.stats.added}/-${file.stats.deleted}`;
-      const previous = file.previousPath ? ` (from ${file.previousPath})` : '';
+      const previous = file.previousPath ? ` (from ${renderPath(file.previousPath)})` : '';
       const source = file.source === 'staged+unstaged' ? ', staged + unstaged' : `, ${file.source}`;
-      lines.push(`- ${file.statusLabel}: ${file.path}${previous} (${stats}${source})`);
+      lines.push(`- ${file.statusLabel}: ${renderPath(file.path)}${previous} (${stats}${source})`);
     }
 
     if (commit.riskFlags.length > 0) {

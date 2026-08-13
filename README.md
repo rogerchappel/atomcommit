@@ -61,6 +61,8 @@ atomcommit --help
 
 The `git ls-files` query includes ordinary untracked files while respecting Git ignore rules. NUL-delimited paths preserve spaces and other special characters. The CLI remains read-only: it does not stage files, alter the index, or modify the working tree.
 
+JSON output preserves path values exactly. In Markdown output, paths are displayed as JSON string literals inside inline code spans. Control characters therefore appear as escapes such as `\\n` and `\\t`, and the code-span fence automatically expands when a filename contains backticks, keeping every path on one unambiguous list item.
+
 Staged and unstaged diffs are combined by logical path. If a staged rename is edited again before commit, the plan keeps the rename's original path and rename risk flag, labels it `staged + unstaged`, aggregates both sets of line changes, and counts it as one changed file.
 
 It groups changes by repository area such as documentation, tests, source code, package metadata, and CI automation. It also flags review risks such as deletions, renames, lockfiles, large changes, binary files, and sensitive-looking paths.
