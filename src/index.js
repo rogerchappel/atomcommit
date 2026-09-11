@@ -216,10 +216,27 @@ export function renderMarkdown(plan) {
   return `${lines.join('\n').trimEnd()}\n`;
 }
 
+export function resolveRepositoryRoot(cwd = process.cwd()) {
+  const result = spawnSync('git', ['rev-parse', '--show-toplevel'], { cwd, encoding: 'utf8' });
+  if (result.status !== 0) {
+    return null;
+  }
+  return result.stdout.trim();
+}
+
+// Returns null when cwd is not inside a git repository; callers decide how to
+// report it so the CLI can stay free of raw git usage dumps and stack traces.
 export function collectGitDiff(cwd = process.cwd()) {
-  const unstaged = parseNameStatus(runGit(['diff', '--name-status', '-z'], cwd), 'unstaged');
-  const staged = parseNameStatus(runGit(['diff', '--cached', '--name-status', '-z'], cwd), 'staged');
-  const untrackedPaths = parseUntrackedPaths(runGit(['ls-files', '--others', '--exclude-standard', '-z'], cwd));
+  // Pin every git invocation to the repository root so diff enumeration,
+  // ls-files untracked discovery, and per-file stats share one root-relative
+  // path space no matter which subdirectory the CLI was invoked from.
+  const root = resolveRepositoryRoot(cwd);
+  if (root === null || root === '') {
+    return null;
+  }
+  const unstaged = parseNameStatus(runGit(['diff', '--name-status', '-z'], root), 'unstaged');
+  const staged = parseNameStatus(runGit(['diff', '--cached', '--name-status', '-z'], root), 'staged');
+  const untrackedPaths = parseUntrackedPaths(runGit(['ls-files', '--others', '--exclude-standard', '-z'], root));
   const untracked = untrackedPaths.map((path) => ({
     path,
     previousPath: null,
@@ -229,16 +246,16 @@ export function collectGitDiff(cwd = process.cwd()) {
     score: null,
     source: 'untracked',
   }));
-  const untrackedStats = new Map(untrackedPaths.map((path) => [path, untrackedStat(path, cwd)]));
+  const untrackedStats = new Map(untrackedPaths.map((path) => [path, untrackedStat(path, root)]));
   const changes = mergeChanges([...staged, ...unstaged, ...untracked]);
   const stats = mergeStats([
-    parseNumstat(runGit(['diff', '--cached', '--numstat', '-z'], cwd)),
-    parseNumstat(runGit(['diff', '--numstat', '-z'], cwd)),
+    parseNumstat(runGit(['diff', '--cached', '--numstat', '-z'], root)),
+    parseNumstat(runGit(['diff', '--numstat', '-z'], root)),
     untrackedStats,
   ]);
   const diffStat = mergeDiffStats([
-    parseDiffStat(runGit(['diff', '--cached', '--stat'], cwd)),
-    parseDiffStat(runGit(['diff', '--stat'], cwd)),
+    parseDiffStat(runGit(['diff', '--cached', '--stat'], root)),
+    parseDiffStat(runGit(['diff', '--stat'], root)),
     untrackedDiffStat(untrackedStats),
   ], changes.length);
 
@@ -370,7 +387,7 @@ function runGit(args, cwd, allowedStatuses = [0]) {
 }
 
 function printHelp() {
-  console.log(`Usage: atomcommit [plan] [--json]\n\nCommands:\n  plan       Analyze local tracked and untracked changes and print an atomic commit plan.\n\nDefault:\n  atomcommit is equivalent to atomcommit plan.\n\nOptions:\n  --json        Print machine-readable JSON instead of Markdown.\n  -h, --help    Show this help.\n  -v, --version Print the CLI version.\n\nSafety:\n  atomcommit only runs read-only git diff and git ls-files commands and never stages, commits, or modifies files.`);
+  console.log(`Usage: atomcommit [plan] [--json]\n\nCommands:\n  plan       Analyze local tracked and untracked changes and print an atomic commit plan.\n\nDefault:\n  atomcommit is equivalent to atomcommit plan.\n\nOptions:\n  --json        Print machine-readable JSON instead of Markdown.\n  -h, --help    Show this help.\n  -v, --version Print the CLI version.\n\nSafety:\n  atomcommit only runs read-only Git commands (rev-parse, diff, ls-files) from the repository root and never stages, commits, or modifies files. Outside a git repository it prints 'atomcommit: not a git repository' and exits 1.`);
 }
 
 export function main(argv = process.argv.slice(2), cwd = process.cwd()) {
@@ -400,6 +417,11 @@ export function main(argv = process.argv.slice(2), cwd = process.cwd()) {
   }
 
   const plan = collectGitDiff(cwd);
+  if (plan === null) {
+    console.error('atomcommit: not a git repository');
+    return 1;
+  }
+
   if (options.includes('--json')) {
     console.log(JSON.stringify(plan, null, 2));
   } else {

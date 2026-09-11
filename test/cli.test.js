@@ -1,10 +1,76 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { execFileSync, execSync } from 'node:child_process';
+import { execFileSync, execSync, spawnSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { pathToFileURL } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
+
+const cliPath = fileURLToPath(new URL('../src/index.js', import.meta.url));
+
+function runCliJson(args, cwd) {
+  const result = spawnSync(process.execPath, [cliPath, ...args], { cwd, encoding: 'utf8' });
+  assert.equal(result.status, 0, `atomcommit ${args.join(' ')} failed: ${result.stderr}`);
+  return JSON.parse(result.stdout);
+}
+
+function planFilePaths(plan) {
+  return plan.commits.flatMap((commit) => commit.files.map((file) => file.path)).sort();
+}
+
+function initScratchRepo(parent, name = 'repo') {
+  const repo = join(parent, name);
+  mkdirSync(repo, { recursive: true });
+  execFileSync('git', ['init', '--initial-branch', 'main'], { cwd: repo, stdio: 'pipe' });
+  execFileSync('git', ['config', 'user.email', 'test@example.com'], { cwd: repo });
+  execFileSync('git', ['config', 'user.name', 'Test User'], { cwd: repo });
+  writeFileSync(join(repo, 'tracked.txt'), 'one\n');
+  execFileSync('git', ['add', 'tracked.txt'], { cwd: repo });
+  execFileSync('git', ['commit', '-m', 'initial'], { cwd: repo, stdio: 'pipe' });
+  return repo;
+}
+
+test('plan invoked from a subdirectory matches the root-relative plan from the repository root', (t) => {
+  const parent = mkdtempSync(join(tmpdir(), 'atomcommit-subdir-'));
+  t.after(() => rmSync(parent, { recursive: true, force: true }));
+
+  const repo = initScratchRepo(parent);
+  mkdirSync(join(repo, 'sub'));
+  writeFileSync(join(repo, 'notes-at-root.txt'), 'untracked at repository root\n');
+  writeFileSync(join(repo, 'sub', 'file.txt'), 'untracked in subdirectory\n');
+
+  const fromRoot = runCliJson(['plan', '--json'], repo);
+  const fromSub = runCliJson(['plan', '--json'], join(repo, 'sub'));
+
+  assert.deepEqual(planFilePaths(fromSub), planFilePaths(fromRoot));
+  assert.deepEqual(
+    planFilePaths(fromRoot),
+    ['notes-at-root.txt', 'sub/file.txt'].sort(),
+    'root scan must list both untracked files with root-relative paths',
+  );
+  assert.equal(
+    fromSub.summary.filesChanged,
+    fromRoot.summary.filesChanged,
+    'subdirectory invocation must not drop or duplicate files',
+  );
+
+  const subFile = fromSub.commits.flatMap((commit) => commit.files).find((file) => file.path === 'sub/file.txt');
+  assert.ok(subFile, 'plan from subdirectory still reports sub/file.txt root-relative');
+  assert.equal(subFile.stats.added, 1);
+});
+
+test('plan outside a git repository exits 1 with one concise stderr line and no stack trace', (t) => {
+  const dir = mkdtempSync(join(tmpdir(), 'atomcommit-nongit-'));
+  t.after(() => rmSync(dir, { recursive: true, force: true }));
+
+  const result = spawnSync(process.execPath, [cliPath, 'plan'], { cwd: dir, encoding: 'utf8' });
+
+  assert.equal(result.status, 1);
+  assert.equal(result.stdout, '');
+  assert.equal(result.stderr.trim(), 'atomcommit: not a git repository');
+  assert.equal(result.stderr.trim().split('\n').length, 1, 'stderr must be a single concise line');
+  assert.doesNotMatch(result.stderr, /Error|usage|fatal|index\.js/, 'stderr must not embed git usage output or a stack trace');
+});
 
 test('atomcommit plan test - CLI should handle --help', () => {
   try {

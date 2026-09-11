@@ -27,4 +27,29 @@ if (!plan.commits.some((commit) => commit.riskFlags.includes("deletion"))) throw
 grep -q '^# Atomic Commit Plan' "$tmp_dir/plan.md"
 grep -q 'Suggested commit message:' "$tmp_dir/plan.md"
 
-printf 'Smoke passed: fixture plan generated in Markdown and JSON.\n'
+# Subdirectory invocations must produce the identical root-relative plan.
+cd "$fixture_repo/docs"
+node "$repo_root/src/index.js" plan --json > "$tmp_dir/plan-sub.json"
+node -e '
+const fs = require("node:fs");
+const [root, sub] = process.argv.slice(1).map((f) => fs.readFileSync(f, "utf8"));
+if (root !== sub) throw new Error("plan differs when generated from a subdirectory");
+' "$tmp_dir/plan.json" "$tmp_dir/plan-sub.json"
+
+# Outside a git repository the CLI must fail with one concise stderr line.
+nongit_dir="$tmp_dir/not-a-repo"
+mkdir -p "$nongit_dir"
+set +e
+nongit_stderr="$(cd "$nongit_dir" && node "$repo_root/src/index.js" plan 2>&1 >/dev/null)"
+nongit_status=$?
+set -e
+if [ "$nongit_status" -ne 1 ]; then
+  echo "expected exit 1 outside a git repository, got $nongit_status" >&2
+  exit 1
+fi
+if [ "$nongit_stderr" != "atomcommit: not a git repository" ]; then
+  echo "expected one concise stderr line outside a git repository, got: $nongit_stderr" >&2
+  exit 1
+fi
+
+printf 'Smoke passed: fixture plan generated in Markdown and JSON, subdirectory-stable, and non-repository error concise.\n'
