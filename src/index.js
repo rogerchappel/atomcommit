@@ -224,11 +224,16 @@ export function resolveRepositoryRoot(cwd = process.cwd()) {
   return result.stdout.trim();
 }
 
+// Returns null when cwd is not inside a git repository; callers decide how to
+// report it so the CLI can stay free of raw git usage dumps and stack traces.
 export function collectGitDiff(cwd = process.cwd()) {
   // Pin every git invocation to the repository root so diff enumeration,
   // ls-files untracked discovery, and per-file stats share one root-relative
   // path space no matter which subdirectory the CLI was invoked from.
-  const root = resolveRepositoryRoot(cwd) ?? cwd;
+  const root = resolveRepositoryRoot(cwd);
+  if (root === null || root === '') {
+    return null;
+  }
   const unstaged = parseNameStatus(runGit(['diff', '--name-status', '-z'], root), 'unstaged');
   const staged = parseNameStatus(runGit(['diff', '--cached', '--name-status', '-z'], root), 'staged');
   const untrackedPaths = parseUntrackedPaths(runGit(['ls-files', '--others', '--exclude-standard', '-z'], root));
@@ -412,6 +417,11 @@ export function main(argv = process.argv.slice(2), cwd = process.cwd()) {
   }
 
   const plan = collectGitDiff(cwd);
+  if (plan === null) {
+    console.error('atomcommit: not a git repository');
+    return 1;
+  }
+
   if (options.includes('--json')) {
     console.log(JSON.stringify(plan, null, 2));
   } else {
