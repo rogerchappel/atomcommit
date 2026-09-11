@@ -387,7 +387,7 @@ function runGit(args, cwd, allowedStatuses = [0]) {
 }
 
 function printHelp() {
-  console.log(`Usage: atomcommit [plan] [--json]\n\nCommands:\n  plan       Analyze local tracked and untracked changes and print an atomic commit plan.\n\nDefault:\n  atomcommit is equivalent to atomcommit plan.\n\nOptions:\n  --json        Print machine-readable JSON instead of Markdown.\n  -h, --help    Show this help.\n  -v, --version Print the CLI version.\n\nSafety:\n  atomcommit only runs read-only git diff and git ls-files commands and never stages, commits, or modifies files.`);
+  console.log(`Usage: atomcommit [plan] [--json]\n\nCommands:\n  plan       Analyze local tracked and untracked changes and print an atomic commit plan.\n\nDefault:\n  atomcommit is equivalent to atomcommit plan.\n\nOptions:\n  --json        Print machine-readable JSON instead of Markdown.\n  -h, --help    Show this help.\n  -v, --version Print the CLI version.\n\nSafety:\n  atomcommit only runs read-only Git commands (rev-parse, diff, ls-files) from the repository root and never stages, commits, or modifies files. Outside a git repository it prints 'atomcommit: not a git repository' and exits 1.`);
 }
 
 export function main(argv = process.argv.slice(2), cwd = process.cwd()) {

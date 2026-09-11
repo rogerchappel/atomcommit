@@ -22,7 +22,7 @@ npm install -g atomcommit
 
 ## Quickstart
 
-From a checkout, generate an atomic commit plan for the current repository:
+From a checkout, generate an atomic commit plan for the current repository (from the repository root or any subdirectory):
 
 ```sh
 node src/index.js plan
@@ -52,14 +52,17 @@ atomcommit --help
 
 `atomcommit` shells out only to these read-only Git commands:
 
-- `git diff --name-status`
-- `git diff --cached --name-status`
-- `git diff --numstat`
+- `git rev-parse --show-toplevel`
+- `git diff --name-status -z`
+- `git diff --cached --name-status -z`
+- `git diff --numstat -z`
+- `git diff --cached --numstat -z`
 - `git diff --stat`
+- `git diff --cached --stat`
 - `git ls-files --others --exclude-standard -z`
 - `git diff --no-index --numstat -- /dev/null <untracked-path>`
 
-The `git ls-files` query includes ordinary untracked files while respecting Git ignore rules. NUL-delimited paths preserve spaces and other special characters. The CLI remains read-only: it does not stage files, alter the index, or modify the working tree.
+The first command resolves the repository root, and every later command runs from that root, so invoking `atomcommit` in any subdirectory produces the same root-relative plan as invoking it at the repository root. Outside a git repository the CLI prints `atomcommit: not a git repository` to stderr and exits `1`. The `git ls-files` query includes ordinary untracked files while respecting Git ignore rules. NUL-delimited paths preserve spaces and other special characters. The CLI remains read-only: it does not stage files, alter the index, or modify the working tree.
 
 JSON output preserves path values exactly. In Markdown output, paths are displayed as JSON string literals inside inline code spans. Control characters therefore appear as escapes such as `\\n` and `\\t`, and the code-span fence automatically expands when a filename contains backticks, keeping every path on one unambiguous list item.
 
