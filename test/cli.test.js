@@ -59,6 +59,19 @@ test('plan invoked from a subdirectory matches the root-relative plan from the r
   assert.equal(subFile.stats.added, 1);
 });
 
+test('plan outside a git repository exits 1 with one concise stderr line and no stack trace', (t) => {
+  const dir = mkdtempSync(join(tmpdir(), 'atomcommit-nongit-'));
+  t.after(() => rmSync(dir, { recursive: true, force: true }));
+
+  const result = spawnSync(process.execPath, [cliPath, 'plan'], { cwd: dir, encoding: 'utf8' });
+
+  assert.equal(result.status, 1);
+  assert.equal(result.stdout, '');
+  assert.equal(result.stderr.trim(), 'atomcommit: not a git repository');
+  assert.equal(result.stderr.trim().split('\n').length, 1, 'stderr must be a single concise line');
+  assert.doesNotMatch(result.stderr, /Error|usage|fatal|index\.js/, 'stderr must not embed git usage output or a stack trace');
+});
+
 test('atomcommit plan test - CLI should handle --help', () => {
   try {
     const out = execFileSync(process.execPath, ['src/index.js', '--help'], { encoding: 'utf8', stdio: 'pipe' });
