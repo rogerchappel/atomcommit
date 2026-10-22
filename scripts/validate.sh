@@ -141,7 +141,7 @@ if [ -f "package.json" ]; then
   if package_manager="$(choose_package_manager)"; then
     note "using package manager: $package_manager"
 
-    for script_name in check lint test build; do
+    for script_name in check lint test build smoke package:smoke; do
       if package_script_exists "$script_name"; then
         run_check "package script: $script_name" run_package_script "$package_manager" "$script_name"
       fi
