@@ -10,6 +10,8 @@
   "files": [
     "src",
     "fixtures",
+    "docs",
+    "ROADMAP.md",
     "README.md",
     "LICENSE",
     "SECURITY.md",
