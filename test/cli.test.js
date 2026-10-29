@@ -110,9 +110,10 @@ test('packed CLI executes through the npm bin symlink and remains import-safe', 
   writeFileSync(join(consumer, 'package.json'), '{"private":true}\n');
   writeFileSync(join(consumer, 'src/app.js'), 'console.log("before");\n');
   execFileSync('git', ['init', '--initial-branch', 'main'], { cwd: consumer });
+  writeFileSync(join(consumer, '.gitignore'), 'node_modules/\n');
   execFileSync('git', ['config', 'user.email', 'test@example.com'], { cwd: consumer });
   execFileSync('git', ['config', 'user.name', 'Test User'], { cwd: consumer });
-  execFileSync('git', ['add', 'package.json', 'src/app.js'], { cwd: consumer });
+  execFileSync('git', ['add', 'package.json', 'src/app.js', '.gitignore'], { cwd: consumer });
   execFileSync('git', ['commit', '-m', 'initial'], { cwd: consumer });
   execFileSync('npm', ['install', '--ignore-scripts', '--no-audit', '--no-fund', '--no-save', join(parent, tarballName)], {
     cwd: consumer,
