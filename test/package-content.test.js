@@ -27,6 +27,13 @@ test('package content checker accepts declared bin and exports in the npm archiv
   assert.match(result.stdout, /Verified 1 declared package entry point/);
 });
 
+test('package content checker rejects a declared bin target that does not exist', (t) => {
+  const pkg = { ...packageJson, bin: { atomcommit: './src/missing.js' }, main: undefined, exports: {} };
+  const result = runChecker(t, pkg);
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /npm pack is missing declared package entries: src\/missing\.js/);
+});
+
 test('package content checker rejects a declared entry excluded from the package', (t) => {
   const pkg = { ...packageJson, bin: {}, main: undefined, exports: { '.': './missing-entry.js' } };
   const result = runChecker(t, pkg);
