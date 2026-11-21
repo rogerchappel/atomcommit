@@ -1,9 +1,16 @@
 import { execFileSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join, normalize } from 'node:path';
 
 const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
-const packed = JSON.parse(execFileSync('npm', ['pack', '--dry-run', '--json'], { encoding: 'utf8' }))[0];
+const packDir = mkdtempSync(join(tmpdir(), 'atomcommit-package-smoke-'));
+let packed;
+try {
+  packed = JSON.parse(execFileSync('npm', ['pack', '--json', '--pack-destination', packDir], { encoding: 'utf8' }))[0];
+} finally {
+  rmSync(packDir, { recursive: true, force: true });
+}
 const contents = new Set(packed.files.map(({ path }) => normalize(path)));
 const required = new Set();
 
