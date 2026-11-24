@@ -47,3 +47,10 @@ test('package content checker rejects package entry paths outside the package', 
   assert.notEqual(result.status, 0);
   assert.match(result.stderr, /must stay inside the package/);
 });
+
+test('package content checker rejects internal traversal after normalization', (t) => {
+  const pkg = { ...packageJson, bin: { atomcommit: 'src/../../outside.js' }, main: undefined, exports: {} };
+  const result = runChecker(t, pkg);
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /must stay inside the package/);
+});
