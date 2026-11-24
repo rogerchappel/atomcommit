@@ -19,7 +19,7 @@ function addEntry(value, label) {
     throw new Error(`Invalid package ${label} entry: ${JSON.stringify(value)}`);
   }
   const path = normalize(value.replace(/^\.\//, ''));
-  if (path === '..' || path.startsWith(`..${join('', '/')}`) || path.startsWith('/')) {
+  if (path === '..' || path.startsWith(`..${join('', '/')}`) || path.startsWith('/') || path.split(/[\\/]+/).includes('..')) {
     throw new Error(`Package ${label} entry must stay inside the package: ${value}`);
   }
   required.add(path);
