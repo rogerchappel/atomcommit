@@ -54,6 +54,15 @@ test('parses git name-status metadata including renames', () => {
   ]);
 });
 
+test('parses tab-delimited rename and copy metadata', () => {
+  const changes = parseNameStatus(`R100\tdocs/old.md\tdocs/new.md\nC087\tassets/source.png\tassets/copy.png\n`);
+
+  assert.deepEqual(changes.map(({ path, previousPath, statusDetail }) => ({ path, previousPath, statusDetail })), [
+    { path: 'docs/new.md', previousPath: 'docs/old.md', statusDetail: 'R100' },
+    { path: 'assets/copy.png', previousPath: 'assets/source.png', statusDetail: 'C087' },
+  ]);
+});
+
 test('parses NUL-delimited name-status and numstat without splitting paths', () => {
   const tabPath = 'src/tab\tname.js';
   const newlinePath = 'docs/new\nname.md';
